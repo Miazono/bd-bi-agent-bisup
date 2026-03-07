@@ -8,10 +8,11 @@ Stack: MinIO, Hive Metastore, Apache Iceberg, Trino, WrenAI, Python 3.11+.
 These instructions apply to the whole repository unless a deeper AGENTS.md overrides them.
 
 ## Commands
-- Start stack: `docker compose -f infra/docker-compose.yml up -d`
-- Stop stack: `docker compose -f infra/docker-compose.yml down`
+- Start stack: `docker compose docker-compose.yml up -d`
+- Stop stack: `docker compose docker-compose.yml down`
 - Run raw ingestion: `python ingestion/load_raw.py`
-- Run Iceberg load: `python ingestion/load_iceberg.py`
+- Run Bronze load: `python ingestion/load_bronze.py`
+- Run Silver load: `python ingestion/load_silver.py`
 - Run tests: `pytest tests/ -v`
 - Lint: `ruff check . && ruff format .`
 
@@ -26,6 +27,7 @@ These instructions apply to the whole repository unless a deeper AGENTS.md overr
 - Read any files in the repository.
 - Add new files in `ingestion/`, `marts/`, `bi-agent/`, `tests/`, `docs/`.
 - Update `.env.example` when adding new environment variables.
+- Check and update `\doc` files or add new if nessesarily after changes
 
 ## Ask first
 - Change files in `infra/` unless the task explicitly concerns infrastructure.

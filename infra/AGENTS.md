@@ -4,14 +4,12 @@
 Infrastructure for the local Data Lakehouse stack:
 MinIO, Hive Metastore, metastore DB, Trino, WrenAI.
 
-## Scope
-These instructions apply only to files under `infra/`.
 
 ## Commands
-- Start stack: `docker compose -f infra/docker-compose.yml up -d`
-- Stop stack: `docker compose -f infra/docker-compose.yml down`
-- Logs: `docker compose -f infra/docker-compose.yml logs <service>`
-- Recreate service: `docker compose -f infra/docker-compose.yml up -d --force-recreate <service>`
+- Start stack: `docker compose docker-compose.yml up -d`
+- Stop stack: `docker compose docker-compose.yml down`
+- Logs: `docker compose docker-compose.yml logs <service>`
+- Recreate service: `docker compose -f docker-compose.yml up -d --force-recreate <service>`
 
 ## Rules
 - Keep local developer experience stable.

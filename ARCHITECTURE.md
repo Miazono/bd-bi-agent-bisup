@@ -1,75 +1,73 @@
-    ```mermaid
-    flowchart LR
-        subgraph Storage
-            R[Raw files (CSV/Parquet)<br/>data/raw/]
-            M[(MinIO S3<br/>buckets: raw-data, iceberg-warehouse)]
-        end
+# ARCHITECTURE
 
-        subgraph Metadata
-            H[(Hive Metastore)]
-        end
+## Purpose
 
-        subgraph Compute
-            T[(Trino)]
-        end
+Проект представляет собой локальный учебный Data Lakehouse со слоем BI-ассистента.
+Цель — пройти полный путь от загрузки сырых данных до аналитических витрин и natural-language доступа к ним через SQL AI agent.
 
-        subgraph BI
-            U[User]
-            W[WrenAI / SQL BI Agent]
-        end
+## Target stack
 
-        R -->|ingestion/load_raw.py| M
-        M -->|Iceberg data files| T
-        H -->|table metadata| T
-        T -->|SQL queries to Iceberg| M
+- MinIO — объектное хранилище для raw-файлов и файлов Iceberg-таблиц.
+- Hive Metastore — каталог таблиц Iceberg.
+- Trino — SQL-движок для работы с Iceberg-таблицами и витринами.
+- WrenAI (или аналог) — BI-агент, который генерирует SQL к Trino.
+- Python — ingestion и вспомогательные скрипты.
 
-        U -->|NL question| W
-        W -->|generated SQL| T
-        T -->|query results| W
-        W -->|final answer| U
-    ```
+## Data flow
 
-    # Data flow (end-to-end)
-    # Raw ingestion
+### 1. Raw layer
+Исходные CSV / Parquet / JSON-файлы поступают в `data/raw/` локально.
+Скрипт `ingestion/load_raw.py` загружает их в MinIO bucket `raw-data` без бизнес-трансформаций.
 
-    Источник: файлы из data/raw/ (или внешнего источника).
-    Скрипт ingestion/load_raw.py загружает данные AS IS в MinIO bucket raw-data без трансформаций.
+### 2. Bronze layer
+Скрипт `ingestion/load_bronze.py` (или текущий эквивалент ingestion-скрипта) читает raw-данные из MinIO,
+выполняет минимальную техническую нормализацию и формирует Bronze-таблицы в Iceberg.
 
-    # Lakehouse tables (Iceberg)
+Цель Bronze:
+- сохранить данные близко к источнику;
+- зафиксировать схему загрузки;
+- обеспечить переобработку без повторного чтения внешнего источника.
 
-    Скрипт ingestion/load_iceberg.py читает данные из MinIO (raw-data) через Trino.
+### 3. Silver layer
+Скрипт `ingestion/load_silver.py` (или текущий эквивалент) строит очищенные и согласованные таблицы предметной области.
 
-    Трансформации и очистка выполняются в Python/SQL, результат записывается в Iceberg-таблицы в бакете iceberg-warehouse.
+Цель Silver:
+- привести типы;
+- очистить и дедуплицировать данные;
+- сформировать нормализованные сущности для аналитики;
+- подготовить таблицы, пригодные для JOIN и агрегирования.
 
-    Hive Metastore хранит метаданные таблиц (схемы, партиции, снапшоты).
+### 4. Marts layer
+SQL-файлы в `marts/` создают аналитические витрины поверх Silver-таблиц через Trino.
 
-    # Analytical marts
+Цель marts:
+- зафиксировать конечные бизнес-метрики;
+- упростить работу BI-агента;
+- дать стабильный слой для demo и evaluation.
 
-    В директории marts/ определены SQL-витрины (views / tables) поверх Iceberg-таблиц через Trino.
+### 5. BI agent
+BI-агент подключается к Trino и использует semantic layer из `bi-agent/semantic_layer/`.
+Пользователь задаёт вопрос на естественном языке.
+Агент:
+1. сопоставляет вопрос с описанными сущностями и метриками;
+2. генерирует SQL;
+3. выполняет SQL через Trino;
+4. возвращает ответ пользователю.
 
-    scripts/gen_schema.py опрашивает Trino и генерирует docs/data/schema.md — актуальное описание схем.
+### 6. Evaluation
+Качество BI-агента проверяется на тестовом наборе вопросов в `bi-agent/eval/`.
+При необходимости используется LLM-as-a-Judge для сравнения ответа агента с эталоном.
 
-    # SQL BI Agent
+## Architectural principles
 
-    BI-агент (WrenAI или аналог) подключается к Trino и использует semantic layer bi-agent/semantic_layer/models.yaml.
+- Документация описывает целевую архитектуру, даже если часть сервисов пока не реализована.
+- Raw, Bronze, Silver и Marts — логически разные слои.
+- Iceberg используется как табличный формат lakehouse.
+- Trino используется как основной SQL backend для витрин и BI-агента.
+- `docs/data/schema.md` является производной документацией и не редактируется вручную.
+- `AGENTS.md` в каждой директории описывает только локальные правила этой директории.
 
-    Пользователь задает вопрос на естественном языке (NL).
+## Current implementation status
 
-    Агент превращает вопрос в SQL, выполняет запрос в Trino, агрегирует результат и формирует ответ.
-
-    Качество работы оценивается через тестовые вопросы (bi-agent/eval/questions.json) и LLM-as-a-Judge (bi-agent/eval/llm_judge.py).
-
-    # Components
-    MinIO (S3 storage)
-    Объектное хранилище для сырых файлов и файлов Iceberg-таблиц. Локальный аналог Amazon S3, поднимается через infra/docker-compose.yml [web:89][web:91].
-
-    Hive Metastore (metadata)
-    Центральный каталог метаданных (схемы, партиции, таблицы) для Iceberg. Trino использует его для планирования запросов.
-
-    Apache Iceberg (table format)
-    Табличный формат поверх S3 (MinIO), поддерживающий schema evolution, time travel и атомарные операции. Trino обращается к Iceberg как к обычным таблицам.
-
-    Trino (SQL engine)
-    Распределённый SQL-движок для аналитических запросов по Iceberg-таблицам. Используется и для построения витрин, и как backend для BI-агента 
-    BI Agent (WrenAI / другое)
-    Сервис, который принимает естественные запросы пользователя, опирается на semantic layer и генерирует SQL к Trino. Возвращает осмысленные ответы и визуализации на основе витрин 
+На текущем этапе репозиторий описывает структуру и целевые артефакты проекта.
+Допускается, что часть файлов пока являются заготовками и будут реализованы позже через Codex.
