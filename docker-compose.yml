@@ -1,6 +1,73 @@
-version: '3.8'
+version: "3.8"
+
 services:
+  # MinIO — объектное хранилище для raw и Iceberg-таблиц
   minio:
     image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_REGION: ${MINIO_REGION}
     ports:
       - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  # metastore-db — база PostgreSQL для Hive Metastore
+  metastore-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${METASTORE_DB_NAME}
+      POSTGRES_USER: ${METASTORE_DB_USER}
+      POSTGRES_PASSWORD: ${METASTORE_DB_PASSWORD}
+    volumes:
+      - metastore-db-data:/var/lib/postgresql/data
+
+  # hive-metastore — каталог Iceberg-таблиц
+  hive-metastore:
+    image: apache/hive:3.1.3
+    command: hive --service metastore
+    environment:
+      HIVE_METASTORE_URI: ${HIVE_METASTORE_URI}
+      METASTORE_DB_NAME: ${METASTORE_DB_NAME}
+      METASTORE_DB_USER: ${METASTORE_DB_USER}
+      METASTORE_DB_PASSWORD: ${METASTORE_DB_PASSWORD}
+    depends_on:
+      - metastore-db
+    volumes:
+      - hive-metastore-data:/opt/hive/warehouse
+      - ./infra/hive/hive-site.xml:/opt/hive/conf/hive-site.xml:ro
+
+  # trino — SQL-движок для lakehouse
+  trino:
+    image: trinodb/trino:451
+    depends_on:
+      - hive-metastore
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/trino/config.properties:/etc/trino/config.properties:ro
+      - ./infra/trino/catalog:/etc/trino/catalog:ro
+
+  # wrenai — BI-агент (NL2SQL) поверх Trino
+  wrenai:
+    image: ${WREN_AI_IMAGE}
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      TRINO_HOST: ${TRINO_HOST}
+      TRINO_PORT: ${TRINO_PORT}
+      TRINO_CATALOG: ${TRINO_CATALOG}
+      TRINO_SCHEMA: ${TRINO_SCHEMA}
+    ports:
+      - "3000:3000"
+    volumes:
+      - wrenai-data:/data
+      - ./infra/wrenai/config.yaml:/app/config.yaml:ro
+
+volumes:
+  minio-data:
+  metastore-db-data:
+  hive-metastore-data:
+  wrenai-data:

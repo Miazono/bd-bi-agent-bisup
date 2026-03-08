@@ -9,10 +9,11 @@ This directory contains the BI-agent layer:
 
 ## Source of truth
 Before changing BI-agent logic, read:
-1. `docs/data/schema.md`
-2. `docs/data/marts.md`
-3. `ARCHITECTURE.md`
-4. this file
+1. `docs/data/catalog_generated.md`
+2. `docs/data/schema.md`
+3. `docs/data/marts.md`
+4. `ARCHITECTURE.md`
+5. this file
 
 ## Exposure rules
 - Primary semantic exposure should be based on marts.

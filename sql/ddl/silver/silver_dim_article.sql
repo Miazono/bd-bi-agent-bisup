@@ -1,0 +1,38 @@
+CREATE TABLE IF NOT EXISTS silver.dim_article (
+  article_id BIGINT,
+  product_code BIGINT,
+  prod_name VARCHAR,
+  product_type_no INTEGER,
+  product_type_name VARCHAR,
+  product_group_name VARCHAR,
+  graphical_appearance_no INTEGER,
+  graphical_appearance_name VARCHAR,
+  colour_group_code INTEGER,
+  colour_group_name VARCHAR,
+  perceived_colour_value_id INTEGER,
+  perceived_colour_value_name VARCHAR,
+  perceived_colour_master_id INTEGER,
+  perceived_colour_master_name VARCHAR,
+  department_no INTEGER,
+  department_name VARCHAR,
+  index_code VARCHAR,
+  index_name VARCHAR,
+  index_group_no INTEGER,
+  index_group_name VARCHAR,
+  section_no INTEGER,
+  section_name VARCHAR,
+  garment_group_no INTEGER,
+  garment_group_name VARCHAR,
+  detail_desc VARCHAR,
+  ingest_ts TIMESTAMP(6),
+  source_file_name VARCHAR,
+  batch_id VARCHAR,
+  is_ladieswear BOOLEAN,
+  is_menswear BOOLEAN,
+  is_kids BOOLEAN,
+  color_family VARCHAR
+)
+WITH (
+  format = 'PARQUET',
+  location = 's3a://lakehouse/silver/dim_article/'
+);

@@ -67,6 +67,14 @@
 - `scripts/` — служебные скрипты
 - `tests/` — тесты
 
+## Local stack
+
+Локальная инфраструктура поднимается через `docker-compose.yml`:
+
+```bash
+docker compose up -d
+```
+
 ## Documentation
 
 - `ARCHITECTURE.md` — целевая архитектура проекта
