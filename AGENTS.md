@@ -2,41 +2,69 @@
 
 ## Project
 Учебный групповой проект: Data Lakehouse + SQL BI Agent.
-Stack: MinIO, Hive Metastore, Apache Iceberg, Trino, WrenAI, Python 3.11+.
+
+Target stack:
+- MinIO
+- Hive Metastore
+- Apache Iceberg
+- Trino
+- WrenAI
+- Python 3.11+
 
 ## Scope
-These instructions apply to the whole repository unless a deeper AGENTS.md overrides them.
+These instructions apply to the whole repository unless a deeper `AGENTS.md` overrides them.
+
+## Source of truth
+Before making changes, read files in this order:
+1. `README.md` — project overview and current scope
+2. `ARCHITECTURE.md` — target architecture and layer model
+3. `docs/data/schema.md` — table catalog, grains, and layer structure
+4. `docs/data/marts.md` — analytical marts and BI-facing logic
+5. the closest local `AGENTS.md` in the directory you work in
+
+If documents conflict, prefer the most specific file for that scope.
 
 ## Commands
-- Start stack: `docker compose docker-compose.yml up -d`
-- Stop stack: `docker compose docker-compose.yml down`
+- Start stack: `docker compose up -d`
+- Stop stack: `docker compose down`
 - Run raw ingestion: `python ingestion/load_raw.py`
-- Run Bronze load: `python ingestion/load_bronze.py`
-- Run Silver load: `python ingestion/load_silver.py`
+- Run bronze load: `python ingestion/load_bronze.py`
+- Run silver load: `python ingestion/load_silver.py`
 - Run tests: `pytest tests/ -v`
 - Lint: `ruff check . && ruff format .`
 
 ## Working rules
-- Read `README.md`, `ARCHITECTURE.md`, and the closest `AGENTS.md` before making changes.
 - Keep diffs minimal and scoped to the task.
 - Do not perform broad refactors unless explicitly requested.
-- Run relevant tests/checks after changes.
-- If commands, configs, env vars, or architecture change, update docs in the same task.
+- Run relevant checks after changes when possible.
+- If architecture, configs, env vars, data model, or commands change, update docs in the same task.
+- Treat this repository as a project under active design: not every planned component is fully implemented yet.
+
+## Data model conventions
+- The target layer model is: `raw -> bronze -> silver -> marts -> BI agent`
+- Use the H&M dataset as the primary reference dataset.
+- `silver.fct_customer_period_stats` is out of scope and should not be introduced.
+- `silver.fct_customer_article_stats` is allowed as a derived silver aggregate.
+- Primary BI / semantic exposure should be built on marts, not on bronze tables.
 
 ## Always
 - Read any files in the repository.
-- Add new files in `ingestion/`, `marts/`, `bi-agent/`, `tests/`, `docs/`.
+- Add new files in `ingestion/`, `marts/`, `bi-agent/`, `tests/`, `docs/`, and `scripts/`.
 - Update `.env.example` when adding new environment variables.
-- Check and update `\doc` files or add new if nessesarily after changes
+- Update relevant docs when changing data model, file names, commands, or architecture.
 
 ## Ask first
-- Change files in `infra/` unless the task explicitly concerns infrastructure.
-- Change existing Iceberg table schemas or column types.
+- Change infrastructure files unless the task explicitly concerns infrastructure.
+- Change existing table grains, business keys, or semantic definitions.
 - Add new external dependencies or new Docker services.
-- Change prompts / semantic layer unless the task is about BI-agent quality or behavior.
+- Change prompts or semantic layer unless the task is about BI-agent quality or behavior.
 
 ## Never
 - Edit `.env`.
-- Edit `docs/data/schema.md` manually; regenerate it via `python scripts/gen_schema.py`.
+- Commit real secrets or credentials.
 - Commit large local datasets from `data/raw/`.
 - Remove tests or reduce coverage without explicit reason.
+
+## Notes
+- `docs/data/schema.md` may be edited manually until automated schema generation is implemented.
+- Once `scripts/gen_schema.py` becomes the source of truth, this rule can be tightened.

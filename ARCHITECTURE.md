@@ -13,37 +13,68 @@
 - WrenAI (или аналог) — BI-агент, который генерирует SQL к Trino.
 - Python — ingestion и вспомогательные скрипты.
 
+## Dataset
+
+В качестве основного набора данных используется H&M Fashion Recommendations dataset.
+
+В scope v1 входят только табличные данные:
+- `articles.csv`
+- `customers.csv`
+- `transactions_train.csv`
+
 ## Data flow
 
 ### 1. Raw layer
-Исходные CSV / Parquet / JSON-файлы поступают в `data/raw/` локально.
-Скрипт `ingestion/load_raw.py` загружает их в MinIO bucket `raw-data` без бизнес-трансформаций.
+Исходные файлы загружаются в MinIO без бизнес-трансформаций.
+
+Назначение raw-слоя:
+- сохранить оригинальные данные;
+- обеспечить воспроизводимость загрузки;
+- отделить landing zone от аналитической модели.
+
+Пример логической структуры хранения:
+- `s3://lakehouse/raw/hm/load_date=YYYY-MM-DD/articles.csv`
+- `s3://lakehouse/raw/hm/load_date=YYYY-MM-DD/customers.csv`
+- `s3://lakehouse/raw/hm/load_date=YYYY-MM-DD/transactions_train.csv`
 
 ### 2. Bronze layer
-Скрипт `ingestion/load_bronze.py` (или текущий эквивалент ingestion-скрипта) читает raw-данные из MinIO,
-выполняет минимальную техническую нормализацию и формирует Bronze-таблицы в Iceberg.
+Bronze — это технически нормализованные Iceberg-таблицы, максимально близкие к источнику.
 
-Цель Bronze:
-- сохранить данные близко к источнику;
-- зафиксировать схему загрузки;
-- обеспечить переобработку без повторного чтения внешнего источника.
+Планируемые таблицы:
+- `bronze.hm_articles`
+- `bronze.hm_customers`
+- `bronze.hm_transactions`
+
+На этом слое допускаются:
+- приведение типов;
+- добавление технических полей загрузки;
+- нормализация пустых значений;
+- базовые DQ-проверки.
 
 ### 3. Silver layer
-Скрипт `ingestion/load_silver.py` (или текущий эквивалент) строит очищенные и согласованные таблицы предметной области.
+Silver — это очищенная аналитическая модель, пригодная для JOIN, сегментации и расчёта витрин.
 
-Цель Silver:
-- привести типы;
-- очистить и дедуплицировать данные;
-- сформировать нормализованные сущности для аналитики;
-- подготовить таблицы, пригодные для JOIN и агрегирования.
+Планируемые таблицы:
+- `silver.dim_article`
+- `silver.dim_customer`
+- `silver.dim_date`
+- `silver.fact_sales_line`
+- `silver.fct_customer_article_stats`
 
 ### 4. Marts layer
-SQL-файлы в `marts/` создают аналитические витрины поверх Silver-таблиц через Trino.
+Marts — это готовые аналитические витрины для Trino и BI-агента.
 
-Цель marts:
-- зафиксировать конечные бизнес-метрики;
+Планируемые витрины:
+- `mart.sales_daily_channel`
+- `mart.sales_monthly_category`
+- `mart.customer_segment_monthly`
+- `mart.repeat_purchase_category`
+- `mart.customer_rfm_monthly`
+
+Назначение mart-слоя:
 - упростить работу BI-агента;
-- дать стабильный слой для demo и evaluation.
+- зафиксировать конечные метрики;
+- дать стабильный слой для демо и evaluation.
 
 ### 5. BI agent
 BI-агент подключается к Trino и использует semantic layer из `bi-agent/semantic_layer/`.
@@ -62,10 +93,12 @@ BI-агент подключается к Trino и использует semantic
 
 - Документация описывает целевую архитектуру, даже если часть сервисов пока не реализована.
 - Raw, Bronze, Silver и Marts — логически разные слои.
+- Основной факт проекта — продажи на уровне purchase line.
+- Главные измерения — товар, клиент и дата.
 - Iceberg используется как табличный формат lakehouse.
 - Trino используется как основной SQL backend для витрин и BI-агента.
 - `docs/data/schema.md` является производной документацией и не редактируется вручную.
-- `AGENTS.md` в каждой директории описывает только локальные правила этой директории.
+
 
 ## Current implementation status
 
