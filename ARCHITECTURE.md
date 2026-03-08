@@ -33,9 +33,9 @@
 - отделить landing zone от аналитической модели.
 
 Пример логической структуры хранения:
-- `s3://lakehouse/raw/hm/load_date=YYYY-MM-DD/articles.csv`
-- `s3://lakehouse/raw/hm/load_date=YYYY-MM-DD/customers.csv`
-- `s3://lakehouse/raw/hm/load_date=YYYY-MM-DD/transactions_train.csv`
+- `s3://lakehouse/raw/hm/articles/load_date=YYYY-MM-DD/articles.csv`
+- `s3://lakehouse/raw/hm/customers/load_date=YYYY-MM-DD/customers.csv`
+- `s3://lakehouse/raw/hm/transactions_train/load_date=YYYY-MM-DD/transactions_train.csv`
 
 ### 2. Bronze layer
 Bronze — это технически нормализованные Iceberg-таблицы, максимально близкие к источнику.

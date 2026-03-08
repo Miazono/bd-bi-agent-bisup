@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS bronze.hm_articles (
   article_id BIGINT,
-  product_code BIGINT,  -- или INTEGER, если проверил диапазон в датасете
+  product_code BIGINT,
   prod_name VARCHAR,
   product_type_no INTEGER,
   product_type_name VARCHAR,

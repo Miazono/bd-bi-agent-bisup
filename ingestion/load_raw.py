@@ -42,7 +42,9 @@ def parse_args():
 
 
 def build_minio_client():
-    """Создаёт MinIO-клиент на основе переменных окружения."""
+    """
+    Создаёт MinIO-клиент на основе переменных окружения.
+    """
     endpoint = os.getenv("MINIO_ENDPOINT")
     access_key = os.getenv("MINIO_ROOT_USER")
     secret_key = os.getenv("MINIO_ROOT_PASSWORD")
@@ -72,7 +74,9 @@ def build_minio_client():
 
 
 def compute_md5(file_path):
-    """Считает MD5 файла."""
+    """
+    Считает MD5 файла.
+    """
     hasher = hashlib.md5()
     with open(file_path, "rb") as file_obj:
         for chunk in iter(lambda: file_obj.read(1024 * 1024), b""):
@@ -81,7 +85,9 @@ def compute_md5(file_path):
 
 
 def get_object_md5(client, bucket, object_name):
-    """Возвращает MD5 из метаданных объекта, если он существует."""
+    """
+    Возвращает MD5 из метаданных объекта, если он существует.
+    """
     try:
         stat = client.stat_object(bucket, object_name)
     except S3Error as exc:
@@ -96,13 +102,15 @@ def get_object_md5(client, bucket, object_name):
     )
 
 
-def upload_file(client, bucket, raw_prefix, load_date, source_dir, filename):
-    """Загружает файл в raw-слой с проверкой MD5."""
+def upload_file(client, bucket, raw_prefix, load_date, source_dir, filename: str):
+    """
+    Загружает файл в raw-слой с проверкой MD5.
+    """
     file_path = os.path.join(source_dir, filename)
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"Source file not found: {file_path}")
 
-    object_name = f"{raw_prefix}/hm/load_date={load_date}/{filename}"
+    object_name = f"{raw_prefix}/hm/{filename.split('.')[0]}/load_date={load_date}/{filename}"
     local_md5 = compute_md5(file_path)
     remote_md5 = get_object_md5(client, bucket, object_name)
 
@@ -121,7 +129,9 @@ def upload_file(client, bucket, raw_prefix, load_date, source_dir, filename):
 
 
 def main():
-    """Загружает CSV в raw-слой MinIO."""
+    """
+    Загружает CSV в raw-слой MinIO.
+    """
     args = parse_args()
 
     source_dir = args.source_dir

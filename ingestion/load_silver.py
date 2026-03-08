@@ -30,14 +30,18 @@ def get_trino_connection():
 
 
 def execute_sql(cursor, sql, title):
-    """Выполняет SQL и логирует этап."""
+    """
+    Выполняет SQL и логирует этап.
+    """
     logging.info("Start: %s", title)
     cursor.execute(sql)
     logging.info("Done: %s", title)
 
 
 def log_row_count(cursor, table_name):
-    """Логирует количество строк после загрузки."""
+    """
+    Логирует количество строк после загрузки.
+    """
     cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
     count = cursor.fetchone()[0]
     logging.info("Rows in %s: %s", table_name, count)
@@ -265,7 +269,9 @@ GROUP BY customer_id, article_id
 
 
 def main():
-    """Загружает silver-таблицы из bronze через Trino SQL."""
+    """
+    Загружает silver-таблицы из bronze через Trino SQL.
+    """
     with get_trino_connection() as conn:
         cursor = conn.cursor()
 

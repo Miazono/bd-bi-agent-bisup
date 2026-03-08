@@ -2,7 +2,7 @@
 
 ## Требования
 
-- Python 3.10+
+- Python 3.11+
 - Запущенный стек (`docker compose up -d`)
 - Исходные CSV-файлы: `articles.csv`, `customers.csv`, `transactions_train.csv`
 
@@ -30,7 +30,7 @@ set -a && source .env && set +a
 Имя бакета берётся из переменной `LAKEHOUSE_BUCKET` в `.env` (по умолчанию `lakehouse`).
 
 **Способ 1 — через UI:**
-1. Открыть `http://<IP_VPS>:9001`
+1. Открыть `http://<domain>:9001`
 2. Войти с логином/паролем из `.env` (`MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`)
 3. **Buckets → Create Bucket** → ввести `lakehouse` → Create
 
@@ -59,7 +59,7 @@ print('Bucket lakehouse created')
 ## Загрузка raw-данных в MinIO
 
 ```bash
-python ingestion/load_raw.py --source-dir /path/to/your/csvs
+python ingestion/load_raw.py --source-dir /data/raw
 ```
 
 Скрипт загружает три файла в бакет по пути `raw/hm/load_date=YYYY-MM-DD/`.
