@@ -47,7 +47,7 @@
 - `silver.dim_customer`
 - `silver.dim_date`
 - `silver.fact_sales_line`
-- `silver.fct_customer_article_stats`
+- `silver.fact_customer_article_stats`
 
 ### Marts
 Готовые витрины для BI-agent:
@@ -74,6 +74,8 @@
 ```bash
 docker compose up -d
 ```
+
+Версия MinIO задаётся через `MINIO_IMAGE` в `.env.example`.
 
 ## Documentation
 

@@ -98,7 +98,7 @@ Primary semantic exposure для BI-agent планируется строить 
 1 строка = `category`
 
 ### Sources
-- `silver.fct_customer_article_stats`
+- `silver.fact_customer_article_stats`
 - `silver.dim_article`
 
 ### Metrics

@@ -1,0 +1,4 @@
+# Decision
+Используется -minio:RELEASE.2023-10-07T15-07-38Z и trino:414
+# Purpose
+Избежать Fatal glibc error: CPU does not support x86-64-v2 на моей системе

@@ -1,0 +1,23 @@
+name: mart_sales_monthly_category
+tableReference: mart.sales_monthly_category
+description: Месячная динамика продаж по товарным категориям.
+grain: 1 строка = sale_month + category
+columns:
+  - name: sale_month
+    type: date
+    description: Месяц продаж (первый день месяца).
+  - name: category
+    type: varchar
+    description: Товарная категория (product_group_name).
+  - name: revenue
+    type: decimal(12,4)
+    description: Выручка за месяц и категорию.
+  - name: items_sold
+    type: bigint
+    description: Количество transaction lines за месяц и категорию.
+  - name: buyers_cnt
+    type: bigint
+    description: Количество уникальных покупателей за месяц и категорию.
+  - name: active_sku_cnt
+    type: bigint
+    description: Количество активных SKU за месяц и категорию.

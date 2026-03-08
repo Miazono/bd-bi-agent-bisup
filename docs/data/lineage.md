@@ -47,7 +47,7 @@
 ### Derived aggregate flow
 
 `silver.fact_sales_line`
-→ `silver.fct_customer_article_stats`
+→ `silver.fact_customer_article_stats`
 → `mart.repeat_purchase_category`
 
 ## Join logic

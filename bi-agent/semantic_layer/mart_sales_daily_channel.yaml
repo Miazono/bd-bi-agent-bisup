@@ -1,0 +1,23 @@
+name: mart_sales_daily_channel
+tableReference: mart.sales_daily_channel
+description: Дневные продажи по каналам продаж.
+grain: 1 строка = sale_date + sales_channel_id
+columns:
+  - name: sale_date
+    type: date
+    description: Дата продажи.
+  - name: sales_channel_id
+    type: integer
+    description: Идентификатор канала продаж.
+  - name: revenue
+    type: decimal(12,4)
+    description: Выручка за день и канал.
+  - name: items_sold
+    type: bigint
+    description: Количество transaction lines за день и канал.
+  - name: buyers_cnt
+    type: bigint
+    description: Количество уникальных покупателей за день и канал.
+  - name: avg_item_price
+    type: decimal(12,4)
+    description: Средняя цена позиции за день и канал.

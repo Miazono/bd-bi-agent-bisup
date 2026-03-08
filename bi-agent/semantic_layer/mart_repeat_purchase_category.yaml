@@ -1,0 +1,20 @@
+name: mart_repeat_purchase_category
+tableReference: mart.repeat_purchase_category
+description: Повторные покупки по товарным категориям.
+grain: 1 строка = category
+columns:
+  - name: category
+    type: varchar
+    description: Товарная категория (product_group_name).
+  - name: repeat_pairs_cnt
+    type: bigint
+    description: Количество пар customer_id + article_id с повторной покупкой.
+  - name: repeat_customers_cnt
+    type: bigint
+    description: Количество клиентов с повторными покупками в категории.
+  - name: avg_purchase_cnt
+    type: decimal(12,4)
+    description: Среднее число покупок на пару customer_id + article_id.
+  - name: repeat_revenue
+    type: decimal(12,4)
+    description: Выручка от повторных покупок в категории.

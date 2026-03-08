@@ -94,7 +94,7 @@
 - **Partitioning:** `month(sale_date)`
 - **Purpose:** главный факт продаж для построения витрин
 
-### `silver.fct_customer_article_stats`
+### `silver.fact_customer_article_stats`
 - **Source:** aggregate from `silver.fact_sales_line`
 - **Grain:** 1 строка = `customer_id + article_id`
 - **Purpose:** агрегат по повторным покупкам и customer-product behavior

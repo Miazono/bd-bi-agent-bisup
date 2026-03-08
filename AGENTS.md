@@ -19,8 +19,9 @@ Before making changes, read files in this order:
 1. `README.md` — project overview and current scope
 2. `ARCHITECTURE.md` — target architecture and layer model
 3. `docs/data/schema.md` — table catalog, grains, and layer structure
-4. `docs/data/marts.md` — analytical marts and BI-facing logic
-5. the closest local `AGENTS.md` in the directory you work in
+4. `docs/data/catalog_generated.md` — schema from Trino metadata
+5. `docs/data/marts.md` — analytical marts and BI-facing logic
+6. the closest local `AGENTS.md` in the directory you work in
 
 If documents conflict, prefer the most specific file for that scope.
 
@@ -43,8 +44,8 @@ If documents conflict, prefer the most specific file for that scope.
 ## Data model conventions
 - The target layer model is: `raw -> bronze -> silver -> marts -> BI agent`
 - Use the H&M dataset as the primary reference dataset.
-- `silver.fct_customer_period_stats` is out of scope and should not be introduced.
-- `silver.fct_customer_article_stats` is allowed as a derived silver aggregate.
+- `silver.fact_customer_period_stats` is out of scope and should not be introduced.
+- `silver.fact_customer_article_stats` is allowed as a derived silver aggregate.
 - Primary BI / semantic exposure should be built on marts, not on bronze tables.
 
 ## Always

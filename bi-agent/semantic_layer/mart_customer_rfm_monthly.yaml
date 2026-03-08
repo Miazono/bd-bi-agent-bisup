@@ -1,0 +1,23 @@
+name: mart_customer_rfm_monthly
+tableReference: mart.customer_rfm_monthly
+description: RFM-профиль клиентов по месяцам.
+grain: 1 строка = customer_id + snapshot_month
+columns:
+  - name: customer_id
+    type: varchar
+    description: Идентификатор клиента.
+  - name: snapshot_month
+    type: date
+    description: Последний день месяца, на который рассчитан профиль.
+  - name: recency_days
+    type: integer
+    description: Количество дней с последней покупки на дату snapshot_month.
+  - name: frequency_365d
+    type: bigint
+    description: Количество покупок за последние 365 дней.
+  - name: monetary_365d
+    type: decimal(12,4)
+    description: Суммарная выручка за последние 365 дней.
+  - name: rfm_segment
+    type: varchar
+    description: RFM-сегмент клиента.

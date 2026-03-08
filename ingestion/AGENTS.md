@@ -54,10 +54,10 @@ Before changing ingestion logic, read:
 - `silver.dim_customer`
 - `silver.dim_date`
 - `silver.fact_sales_line`
-- `silver.fct_customer_article_stats`
+- `silver.fact_customer_article_stats`
 
 Do not create:
-- `silver.fct_customer_period_stats`
+- `silver.fact_customer_period_stats`
 
 ## Quality rules
 - Keep table grain explicit in code comments or SQL.

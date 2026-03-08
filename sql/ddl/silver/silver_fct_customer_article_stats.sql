@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS silver.fct_customer_article_stats (
+CREATE TABLE IF NOT EXISTS silver.fact_customer_article_stats (
   customer_id VARCHAR,
   article_id BIGINT,
   first_purchase_date DATE,
@@ -9,5 +9,5 @@ CREATE TABLE IF NOT EXISTS silver.fct_customer_article_stats (
 )
 WITH (
   format = 'PARQUET',
-  location = 's3a://lakehouse/silver/fct_customer_article_stats/'
+  location = 's3a://lakehouse/silver/fact_customer_article_stats/'
 );

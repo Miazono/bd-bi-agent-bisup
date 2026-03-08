@@ -59,7 +59,7 @@ Silver — это очищенная аналитическая модель, п
 - `silver.dim_customer`
 - `silver.dim_date`
 - `silver.fact_sales_line`
-- `silver.fct_customer_article_stats`
+- `silver.fact_customer_article_stats`
 
 ### 4. Marts layer
 Marts — это готовые аналитические витрины для Trino и BI-агента.

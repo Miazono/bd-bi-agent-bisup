@@ -1,0 +1,26 @@
+name: mart_customer_segment_monthly
+tableReference: mart.customer_segment_monthly
+description: Месячная ценность клиентских сегментов.
+grain: 1 строка = sale_month + customer_segment
+columns:
+  - name: sale_month
+    type: date
+    description: Месяц продаж (первый день месяца).
+  - name: customer_segment
+    type: varchar
+    description: Клиентский сегмент (club_member_status).
+  - name: revenue
+    type: decimal(12,4)
+    description: Выручка за месяц и сегмент.
+  - name: buyers_cnt
+    type: bigint
+    description: Количество уникальных покупателей за месяц и сегмент.
+  - name: purchase_lines_cnt
+    type: bigint
+    description: Количество transaction lines за месяц и сегмент.
+  - name: revenue_per_buyer
+    type: decimal(12,4)
+    description: Выручка на одного покупателя за месяц и сегмент.
+  - name: avg_item_price
+    type: decimal(12,4)
+    description: Средняя цена позиции за месяц и сегмент.

@@ -1,0 +1,182 @@
+[
+  {
+    "id": "q001",
+    "question": "Show sale_date, sales_channel_id, and revenue for sale_date = '2020-01-15'.",
+    "target_mart": "mart.sales_daily_channel",
+    "expected_columns": ["sale_date", "sales_channel_id", "revenue"]
+  },
+  {
+    "id": "q002",
+    "question": "Show sale_date, sales_channel_id, items_sold, and buyers_cnt for sale_date = '2020-01-15'.",
+    "target_mart": "mart.sales_daily_channel",
+    "expected_columns": ["sale_date", "sales_channel_id", "items_sold", "buyers_cnt"]
+  },
+  {
+    "id": "q003",
+    "question": "Show sale_date, sales_channel_id, avg_item_price, and revenue for sale_date = '2020-02-01'.",
+    "target_mart": "mart.sales_daily_channel",
+    "expected_columns": ["sale_date", "sales_channel_id", "avg_item_price", "revenue"]
+  },
+  {
+    "id": "q004",
+    "question": "Show sale_date, sales_channel_id, and revenue for sale_date between '2020-01-01' and '2020-01-07'.",
+    "target_mart": "mart.sales_daily_channel",
+    "expected_columns": ["sale_date", "sales_channel_id", "revenue"]
+  },
+  {
+    "id": "q005",
+    "question": "Show sale_date, sales_channel_id, and items_sold for sale_date = '2019-09-15'.",
+    "target_mart": "mart.sales_daily_channel",
+    "expected_columns": ["sale_date", "sales_channel_id", "items_sold"]
+  },
+  {
+    "id": "q006",
+    "question": "Show sale_date, sales_channel_id, buyers_cnt, and avg_item_price for sale_date = '2020-09-01'.",
+    "target_mart": "mart.sales_daily_channel",
+    "expected_columns": ["sale_date", "sales_channel_id", "buyers_cnt", "avg_item_price"]
+  },
+  {
+    "id": "q007",
+    "question": "Show sale_month, category, and revenue for sale_month = '2020-09-01'.",
+    "target_mart": "mart.sales_monthly_category",
+    "expected_columns": ["sale_month", "category", "revenue"]
+  },
+  {
+    "id": "q008",
+    "question": "Show sale_month, category, items_sold, and buyers_cnt for sale_month = '2020-06-01'.",
+    "target_mart": "mart.sales_monthly_category",
+    "expected_columns": ["sale_month", "category", "items_sold", "buyers_cnt"]
+  },
+  {
+    "id": "q009",
+    "question": "Show sale_month, category, and active_sku_cnt for sale_month = '2020-03-01'.",
+    "target_mart": "mart.sales_monthly_category",
+    "expected_columns": ["sale_month", "category", "active_sku_cnt"]
+  },
+  {
+    "id": "q010",
+    "question": "Show sale_month, category, revenue, and active_sku_cnt for sale_month between '2020-01-01' and '2020-03-01'.",
+    "target_mart": "mart.sales_monthly_category",
+    "expected_columns": ["sale_month", "category", "revenue", "active_sku_cnt"]
+  },
+  {
+    "id": "q011",
+    "question": "Show sale_month, category, buyers_cnt, and revenue for sale_month = '2019-12-01'.",
+    "target_mart": "mart.sales_monthly_category",
+    "expected_columns": ["sale_month", "category", "buyers_cnt", "revenue"]
+  },
+  {
+    "id": "q012",
+    "question": "Show sale_month, category, items_sold, and active_sku_cnt for sale_month = '2020-11-01'.",
+    "target_mart": "mart.sales_monthly_category",
+    "expected_columns": ["sale_month", "category", "items_sold", "active_sku_cnt"]
+  },
+  {
+    "id": "q013",
+    "question": "Show sale_month, customer_segment, and revenue for sale_month = '2020-09-01'.",
+    "target_mart": "mart.customer_segment_monthly",
+    "expected_columns": ["sale_month", "customer_segment", "revenue"]
+  },
+  {
+    "id": "q014",
+    "question": "Show sale_month, customer_segment, buyers_cnt, and purchase_lines_cnt for sale_month = '2020-01-01'.",
+    "target_mart": "mart.customer_segment_monthly",
+    "expected_columns": ["sale_month", "customer_segment", "buyers_cnt", "purchase_lines_cnt"]
+  },
+  {
+    "id": "q015",
+    "question": "Show sale_month, customer_segment, and revenue_per_buyer for sale_month = '2020-06-01'.",
+    "target_mart": "mart.customer_segment_monthly",
+    "expected_columns": ["sale_month", "customer_segment", "revenue_per_buyer"]
+  },
+  {
+    "id": "q016",
+    "question": "Show sale_month, customer_segment, avg_item_price, and revenue for sale_month = '2019-10-01'.",
+    "target_mart": "mart.customer_segment_monthly",
+    "expected_columns": ["sale_month", "customer_segment", "avg_item_price", "revenue"]
+  },
+  {
+    "id": "q017",
+    "question": "Show sale_month, customer_segment, revenue, and buyers_cnt for sale_month between '2019-12-01' and '2020-02-01'.",
+    "target_mart": "mart.customer_segment_monthly",
+    "expected_columns": ["sale_month", "customer_segment", "revenue", "buyers_cnt"]
+  },
+  {
+    "id": "q018",
+    "question": "Show sale_month, customer_segment, purchase_lines_cnt, and revenue_per_buyer for sale_month = '2020-03-01'.",
+    "target_mart": "mart.customer_segment_monthly",
+    "expected_columns": ["sale_month", "customer_segment", "purchase_lines_cnt", "revenue_per_buyer"]
+  },
+  {
+    "id": "q019",
+    "question": "Show category and repeat_pairs_cnt.",
+    "target_mart": "mart.repeat_purchase_category",
+    "expected_columns": ["category", "repeat_pairs_cnt"]
+  },
+  {
+    "id": "q020",
+    "question": "Show category, repeat_customers_cnt, and repeat_revenue.",
+    "target_mart": "mart.repeat_purchase_category",
+    "expected_columns": ["category", "repeat_customers_cnt", "repeat_revenue"]
+  },
+  {
+    "id": "q021",
+    "question": "Show category and avg_purchase_cnt.",
+    "target_mart": "mart.repeat_purchase_category",
+    "expected_columns": ["category", "avg_purchase_cnt"]
+  },
+  {
+    "id": "q022",
+    "question": "Show category, repeat_pairs_cnt, and avg_purchase_cnt.",
+    "target_mart": "mart.repeat_purchase_category",
+    "expected_columns": ["category", "repeat_pairs_cnt", "avg_purchase_cnt"]
+  },
+  {
+    "id": "q023",
+    "question": "Show category and repeat_revenue.",
+    "target_mart": "mart.repeat_purchase_category",
+    "expected_columns": ["category", "repeat_revenue"]
+  },
+  {
+    "id": "q024",
+    "question": "Show category, repeat_customers_cnt, and avg_purchase_cnt.",
+    "target_mart": "mart.repeat_purchase_category",
+    "expected_columns": ["category", "repeat_customers_cnt", "avg_purchase_cnt"]
+  },
+  {
+    "id": "q025",
+    "question": "Show customer_id, snapshot_month, recency_days, frequency_365d, and monetary_365d for customer_id = '00000000000000000000000000000000' and snapshot_month = '2020-09-30'.",
+    "target_mart": "mart.customer_rfm_monthly",
+    "expected_columns": ["customer_id", "snapshot_month", "recency_days", "frequency_365d", "monetary_365d"]
+  },
+  {
+    "id": "q026",
+    "question": "Show customer_id, snapshot_month, and rfm_segment for customer_id = '00000000000000000000000000000000' and snapshot_month = '2020-12-31'.",
+    "target_mart": "mart.customer_rfm_monthly",
+    "expected_columns": ["customer_id", "snapshot_month", "rfm_segment"]
+  },
+  {
+    "id": "q027",
+    "question": "Show customer_id, snapshot_month, frequency_365d, and monetary_365d for customer_id = '00000000000000000000000000000000' and snapshot_month = '2020-06-30'.",
+    "target_mart": "mart.customer_rfm_monthly",
+    "expected_columns": ["customer_id", "snapshot_month", "frequency_365d", "monetary_365d"]
+  },
+  {
+    "id": "q028",
+    "question": "Show customer_id, snapshot_month, recency_days, and rfm_segment for customer_id = '00000000000000000000000000000000' and snapshot_month = '2020-03-31'.",
+    "target_mart": "mart.customer_rfm_monthly",
+    "expected_columns": ["customer_id", "snapshot_month", "recency_days", "rfm_segment"]
+  },
+  {
+    "id": "q029",
+    "question": "Show customer_id, snapshot_month, and recency_days for customer_id = '00000000000000000000000000000000' and snapshot_month = '2019-12-31'.",
+    "target_mart": "mart.customer_rfm_monthly",
+    "expected_columns": ["customer_id", "snapshot_month", "recency_days"]
+  },
+  {
+    "id": "q030",
+    "question": "Show customer_id, snapshot_month, frequency_365d, and rfm_segment for customer_id = '00000000000000000000000000000000' and snapshot_month = '2020-01-31'.",
+    "target_mart": "mart.customer_rfm_monthly",
+    "expected_columns": ["customer_id", "snapshot_month", "frequency_365d", "rfm_segment"]
+  }
+]
