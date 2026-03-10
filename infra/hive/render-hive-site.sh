@@ -16,6 +16,7 @@ fi
 
 cat > "${HIVE_SITE_FILE}" <<EOF
 <configuration>
+  <!-- PostgreSQL для хранения метаданных -->
   <property>
     <name>javax.jdo.option.ConnectionURL</name>
     <value>jdbc:postgresql://metastore-db:5432/${METASTORE_DB_NAME}</value>
@@ -32,13 +33,49 @@ cat > "${HIVE_SITE_FILE}" <<EOF
     <name>javax.jdo.option.ConnectionPassword</name>
     <value>${METASTORE_DB_PASSWORD}</value>
   </property>
+
+  <!-- Адрес метастора -->
   <property>
     <name>hive.metastore.uris</name>
     <value>${HIVE_METASTORE_URI}</value>
   </property>
+
+  <!-- warehouse-директория -->
   <property>
     <name>hive.metastore.warehouse.dir</name>
-    <value>/opt/hive/data/warehouse</value>
+    <value>s3a://lakehouse/warehouse/</value>
+  </property>
+
+  <!-- S3A подключение к MinIO -->
+  <property>
+    <name>fs.s3a.endpoint</name>
+    <value>${S3_ENDPOINT}</value>
+  </property>
+  <property>
+    <name>fs.s3a.access.key</name>
+    <value>${AWS_ACCESS_KEY_ID}</value>
+  </property>
+  <property>
+    <name>fs.s3a.secret.key</name>
+    <value>${AWS_SECRET_ACCESS_KEY}</value>
+  </property>
+  <property>
+    <name>fs.s3a.path.style.access</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>fs.s3a.impl</name>
+    <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+  </property>
+  <property>
+    <name>fs.s3a.connection.ssl.enabled</name>
+    <value>false</value>
+  </property>
+
+  <!-- Отключить проверку существования пути при создании схемы -->
+  <property>
+    <name>hive.metastore.check.valid.location</name>
+    <value>false</value>
   </property>
 </configuration>
 EOF

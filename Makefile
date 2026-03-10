@@ -2,6 +2,9 @@ SHELL := /bin/bash
 
 .PHONY: up down restart load-raw load-bronze
 
+init-storage:
+	APP_ENV=local python -m scripts.init_storage
+
 up:
 	docker compose --env-file .env.docker up -d
 
