@@ -1,5 +1,8 @@
 __pycache__/
 .env
+.env.local
+.env.docker
+.env.shared
 *.pyc
 .venv
 data/raw/
