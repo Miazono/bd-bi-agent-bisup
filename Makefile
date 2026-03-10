@@ -25,5 +25,4 @@ load-raw:
 
 load-silver:
 	APP_ENV=local python -m ingestion.load_silver \
-	--load-date $(shell date +%Y-%m-%d) \
-	--source-dir data/raw
+	--batch-id hm_20260308_01
