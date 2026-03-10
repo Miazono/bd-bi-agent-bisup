@@ -12,5 +12,5 @@ CREATE TABLE IF NOT EXISTS bronze.hm_customers (
 )
 WITH (
   format = 'PARQUET',
-  location = 's3://lakehouse/bronze/hm_customers/'
+  location = 's3a://lakehouse/bronze/hm_customers/'
 );

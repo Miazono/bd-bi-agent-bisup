@@ -31,5 +31,5 @@ CREATE TABLE IF NOT EXISTS silver.dim_article (
 )
 WITH (
   format = 'PARQUET',
-  location = 's3://lakehouse/silver/dim_article/'
+  location = 's3a://lakehouse/silver/dim_article/'
 );

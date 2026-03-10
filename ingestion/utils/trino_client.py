@@ -34,7 +34,7 @@ class TrinoClient:
         )
         http_scheme = (
             (parsed.scheme if parsed and parsed.scheme else None)
-            or settings.trino_schema
+            or settings.trino_http_schema
         )
 
         self.user = settings.minio_root_user

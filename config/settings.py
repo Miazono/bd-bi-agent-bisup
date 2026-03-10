@@ -67,6 +67,7 @@ class Settings:
     trino_host: str
     trino_port: int
     trino_catalog: str
+    trino_http_schema: str
     trino_schema: str
     trino_coordinator: str
 
@@ -115,6 +116,7 @@ class Settings:
             trino_port=int(_env("TRINO_PORT", "8080")),
             trino_catalog=_env("TRINO_CATALOG", "iceberg"),
             trino_schema=_env("TRINO_SCHEMA", "default"),
+            trino_http_schema=_env("TRINO_HTTP_SCHEMA", "HTTP"),
             trino_coordinator=_env("TRINO_COORDINATOR", "http://localhost:8080"),
             openai_api_key=_env("OPENAI_API_KEY", "sk-placeholder"),
             wren_ai_endpoint=_env("WREN_AI_ENDPOINT", "http://localhost:3000"),
