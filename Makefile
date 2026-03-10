@@ -8,7 +8,7 @@ endif
 .PHONY: loadenv up down restart load-raw
 
 up:
-	docker compose up -d
+	docker compose --env-file .env.docker up -d
 
 down:
 	docker compose down
@@ -16,7 +16,9 @@ down:
 restart: down up
 
 load-raw: loadenv
-	python ingestion/load_raw.py --load-date $(shell date +%Y-%m-%d) --source-dir data/raw
+	python -m ingestion.load_raw \
+	--load-date $(shell date +%Y-%m-%d) \
+	--source-dir data/raw
 load-bronze:
 	python -m ingestion.load_bronze \
 	--load-date 2026-03-08 \
