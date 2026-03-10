@@ -95,6 +95,7 @@ services:
       MINIO_ENDPOINT: ${MINIO_ENDPOINT}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-adminadmin}
+      MINIO_REGION: ${MINIO_REGION}
 
 
   # WrenAI — BI-агент (закомментирован до готовности образа)
