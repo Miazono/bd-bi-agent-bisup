@@ -9,6 +9,8 @@ from urllib.parse import urlparse
 from minio import Minio
 from minio.error import S3Error
 
+from config.settings import settings
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,7 +37,7 @@ def parse_args():
     )
     parser.add_argument(
         "--source-dir",
-        default=os.getenv("RAW_SOURCE_DIR"),
+        default=settings.raw_prefix,
         help="Директория с исходными CSV (можно через RAW_SOURCE_DIR)",
     )
     return parser.parse_args()
@@ -45,9 +47,9 @@ def build_minio_client():
     """
     Создаёт MinIO-клиент на основе переменных окружения.
     """
-    endpoint = os.getenv("MINIO_ENDPOINT")
-    access_key = os.getenv("MINIO_ROOT_USER")
-    secret_key = os.getenv("MINIO_ROOT_PASSWORD")
+    endpoint = settings.s3_endpoint
+    access_key = settings.s3_access_key
+    secret_key = settings.s3_secret_key
 
     missing = [name for name, value in {
         "MINIO_ENDPOINT": endpoint,
@@ -136,11 +138,11 @@ def main():
 
     source_dir = args.source_dir
     if not source_dir:
-        logging.error("Source dir is required (use --source-dir or RAW_SOURCE_DIR).")
+        logging.error("Source dir is required (use --source-dir).")
         sys.exit(1)
 
-    bucket = os.getenv("LAKEHOUSE_BUCKET")
-    raw_prefix = os.getenv("RAW_PREFIX")
+    bucket = settings.lakehouse_bucket
+    raw_prefix = settings.raw_prefix
     missing = [name for name, value in {
         "LAKEHOUSE_BUCKET": bucket,
         "RAW_PREFIX": raw_prefix,

@@ -14,7 +14,7 @@ except Exception:
 
 from ingestion.utils.s3_client import S3Client
 from ingestion.utils.trino_client import TrinoClient
-
+from config.settings import settings
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -23,9 +23,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-LAKEHOUSE_BUCKET = os.getenv("LAKEHOUSE_BUCKET", "lakehouse")
-RAW_PREFIX = os.getenv("RAW_PREFIX", "raw")
-BRONZE_PREFIX = os.getenv("BRONZE_PREFIX", "bronze")
+LAKEHOUSE_BUCKET = settings.lakehouse_bucket
+RAW_PREFIX = settings.raw_prefix
+BRONZE_PREFIX = settings.bronze_prefix
 
 
 RAW_LAYOUT = {

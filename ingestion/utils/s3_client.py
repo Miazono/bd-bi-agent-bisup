@@ -8,18 +8,13 @@ from urllib.parse import urlparse
 from minio import Minio
 from minio.error import S3Error
 
+from config.settings import settings
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except Exception:
     pass
 
-
-def _get_env(name: str, default: Optional[str] = None) -> Optional[str]:
-    value = os.getenv(name)
-    if value is None or value == "":
-        return default
-    return value
 
 
 @dataclass
@@ -32,17 +27,13 @@ class S3ObjectInfo:
 class S3Client:
     """
     Env-driven MinIO client.
-
-    Приоритет для кредов:
-    1) MINIO_ROOT_USER / MINIO_ROOT_PASSWORD
-    2) S3_ACCESS_KEY / S3_SECRET_KEY
     """
 
     def __init__(self) -> None:
-        endpoint_url = _get_env("S3_ENDPOINT", "http://minio:9000")
-        access_key = _get_env("S3_ACCESS_KEY")
-        secret_key = _get_env("S3_SECRET_KEY")
-        region = _get_env("MINIO_REGION", "us-east-1")
+        endpoint_url = settings.s3_endpoint
+        access_key = settings.s3_access_key
+        secret_key = settings.s3_secret_key
+        region = settings.minio_region
 
         if not access_key or not secret_key:
             raise ValueError("S3 credentials are not set. Check MINIO_ROOT_* or S3_* env vars.")
@@ -51,7 +42,7 @@ class S3Client:
         if not parsed.scheme or not parsed.netloc:
             raise ValueError(f"Invalid S3/MinIO endpoint: {endpoint_url}")
 
-        self.table_scheme = _get_env("S3_TABLE_SCHEME", "s3a")
+        self.table_scheme = settings.s3_table_scheme
         self.endpoint_url = endpoint_url
         self.region = region
 

@@ -8,18 +8,8 @@ from urllib.parse import urlparse
 import trino
 from trino.dbapi import connect
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except Exception:
-    pass
+from config.settings import settings
 
-
-def _get_env(name: str, default: Optional[str] = None) -> Optional[str]:
-    value = os.getenv(name)
-    if value is None or value == "":
-        return default
-    return value
 
 
 class TrinoClient:
@@ -31,25 +21,25 @@ class TrinoClient:
     """
 
     def __init__(self) -> None:
-        coordinator = _get_env("TRINO_COORDINATOR")
+        coordinator = settings.trino_coordinator
         parsed = urlparse(coordinator) if coordinator else None
 
         host = (
             (parsed.hostname if parsed and parsed.hostname else None)
-            or _get_env("TRINO_HOST", "localhost")
+            or settings.trino_host
         )
         port = (
             (parsed.port if parsed and parsed.port else None)
-            or int(_get_env("TRINO_PORT", "8080"))
+            or int(settings.trino_port)
         )
         http_scheme = (
             (parsed.scheme if parsed and parsed.scheme else None)
-            or _get_env("TRINO_HTTP_SCHEME", "http")
+            or settings.trino_schema
         )
 
-        self.user = _get_env("TRINO_USER", "lakehouse")
-        self.catalog = _get_env("TRINO_CATALOG", "iceberg")
-        self.schema = _get_env("TRINO_SCHEMA", "default")
+        self.user = settings.minio_root_user
+        self.catalog = settings.trino_catalog
+        self.schema = settings.trino_schema
 
         self._conn = connect(
             host=host,
