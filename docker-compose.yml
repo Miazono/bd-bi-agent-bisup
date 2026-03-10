@@ -92,6 +92,8 @@ services:
     volumes:
       - ./infra/trino/catalog:/etc/trino/catalog:ro
       - ./infra/trino/config.properties:/etc/trino/config.properties:ro
+      - ./infra/trino/jvm.config:/etc/trino/jvm.config:ro
+
     environment:
       CATALOG_MANAGEMENT: dynamic
       HIVE_METASTORE_URI: ${HIVE_METASTORE_URI}
