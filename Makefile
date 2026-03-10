@@ -25,4 +25,5 @@ load-raw:
 
 load-silver:
 	APP_ENV=local python -m ingestion.load_silver \
-	--batch-id hm_20260308_01
+	--batch-id hm_20260308_01 \
+	--stats-prefix-len 1
