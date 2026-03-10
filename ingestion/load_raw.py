@@ -14,7 +14,7 @@ from config.settings import settings
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
+    format="%(asctime)s | %(levelname)s | %(message)s",
 )
 
 

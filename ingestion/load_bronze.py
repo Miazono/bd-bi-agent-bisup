@@ -117,11 +117,12 @@ def validate_raw_files(s3: S3Client, bucket: str, raw_prefix: str, load_date: st
 
 
 def create_schemas(trino: TrinoClient, bucket: str) -> None:
+    scheme = settings.s3_table_scheme
     trino.execute("CREATE SCHEMA IF NOT EXISTS hive.raw")
     trino.execute(
         f"""
         CREATE SCHEMA IF NOT EXISTS iceberg.bronze
-        WITH (location = 's3a://{bucket}/{BRONZE_PREFIX.rstrip("/")}/')
+        WITH (location = '{scheme}://{bucket}/{BRONZE_PREFIX.rstrip("/")}/')
         """
     )
 
@@ -173,7 +174,7 @@ def create_all_raw_tables(
         trino=trino,
         table_name="hm_transactions_raw",
         columns=RAW_TABLE_COLUMNS["hm_transactions_raw"],
-        external_location=s3.build_dir_uri(bucket, str(Path(raw_keys["transactions"]).parent)),
+        external_location=s3.build_dir_uri(bucket, str(Path(raw_keys["transactions_train"]).parent)),
     )
 
 

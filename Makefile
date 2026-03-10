@@ -1,11 +1,6 @@
 SHELL := /bin/bash
 
-ifneq (,$(wildcard ./.env))
-    include .env
-    export
-endif
-
-.PHONY: loadenv up down restart load-raw
+.PHONY: up down restart load-raw load-bronze
 
 up:
 	docker compose --env-file .env.docker up -d
@@ -15,13 +10,12 @@ down:
 
 restart: down up
 
-load-raw: loadenv
-	python -m ingestion.load_raw \
-	--load-date $(shell date +%Y-%m-%d) \
-	--source-dir data/raw
 load-bronze:
-	python -m ingestion.load_bronze \
+	APP_ENV=local python -m ingestion.load_bronze \
 	--load-date 2026-03-08 \
 	--batch-id hm_20260308_01
-loadenv:
-	@set -a && source .env && set +a
+
+load-raw:
+	APP_ENV=local python -m ingestion.load_raw \
+	--load-date $(shell date +%Y-%m-%d) \
+	--source-dir data/raw

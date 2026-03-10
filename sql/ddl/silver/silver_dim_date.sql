@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS silver.dim_date (
 )
 WITH (
   format = 'PARQUET',
-  location = 's3a://lakehouse/silver/dim_date/'
+  location = 's3://lakehouse/silver/dim_date/'
 );

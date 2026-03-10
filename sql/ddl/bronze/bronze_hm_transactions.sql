@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS bronze.hm_transactions (
 )
 WITH (
   format = 'PARQUET',
-  location = 's3a://lakehouse/bronze/hm_transactions/',
+  location = 's3://lakehouse/bronze/hm_transactions/',
   partitioning = ARRAY['month(t_dat)']
 );
