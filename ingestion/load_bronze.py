@@ -6,12 +6,6 @@ import os
 from pathlib import Path
 from typing import Dict, List
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except Exception:
-    pass
-
 from ingestion.utils.s3_client import S3Client
 from ingestion.utils.trino_client import TrinoClient
 from config.settings import settings
@@ -109,7 +103,7 @@ def validate_raw_files(s3: S3Client, bucket: str, raw_prefix: str, load_date: st
                 f"Expected layout:\n"
                 f"  raw/hm/articles/load_date=YYYY-MM-DD/articles.csv\n"
                 f"  raw/hm/customers/load_date=YYYY-MM-DD/customers.csv\n"
-                f"  raw/hm/transactions/load_date=YYYY-MM-DD/transactions_train.csv"
+                f"  raw/hm/transactions_train/load_date=YYYY-MM-DD/transactions_train.csv"
             )
         resolved[name] = key
 
@@ -241,11 +235,15 @@ def load_customers_to_bronze(trino: TrinoClient, batch_id: str, source_file_name
     INSERT INTO iceberg.bronze.hm_customers
     SELECT
         NULLIF(customer_id, '') AS customer_id,
-        CAST(NULLIF(fn, '') AS INTEGER) AS fn,
-        CAST(NULLIF(active, '') AS INTEGER) AS active,
+
+        TRY_CAST(regexp_replace(NULLIF(trim(fn), ''), '\\\\.0+$', '') AS INTEGER) AS fn,
+        TRY_CAST(regexp_replace(NULLIF(trim(active), ''), '\\\\.0+$', '') AS INTEGER) AS active,
+
         NULLIF(club_member_status, '') AS club_member_status,
         NULLIF(fashion_news_frequency, '') AS fashion_news_frequency,
-        CAST(NULLIF(age, '') AS INTEGER) AS age,
+
+        TRY_CAST(regexp_replace(NULLIF(trim(age), ''), '\\\\.0+$', '') AS INTEGER) AS age,
+
         NULLIF(postal_code, '') AS postal_code,
         CURRENT_TIMESTAMP AS ingest_ts,
         '{src}' AS source_file_name,

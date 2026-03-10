@@ -3,6 +3,7 @@ import os
 
 from trino.dbapi import connect
 
+from config.settings import settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,12 +13,12 @@ logging.basicConfig(
 
 def get_trino_connection():
     """Создаёт подключение к Trino на основе переменных окружения."""
-    host = os.getenv("TRINO_HOST", "localhost")
-    port = int(os.getenv("TRINO_PORT", "8080"))
-    user = os.getenv("TRINO_USER", "trino")
-    catalog = os.getenv("TRINO_CATALOG", "iceberg")
-    schema = os.getenv("TRINO_SCHEMA", "default")
-    http_scheme = os.getenv("TRINO_HTTP_SCHEME", "http")
+    host = settings.trino_host
+    port = settings.trino_port
+    user = settings.minio_root_user
+    catalog = settings.trino_catalog
+    schema = settings.trino_schema
+    http_scheme = settings.trino_http_schema
 
     return connect(
         host=host,

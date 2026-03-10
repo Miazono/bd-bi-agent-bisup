@@ -22,3 +22,8 @@ load-raw:
 	APP_ENV=local python -m ingestion.load_raw \
 	--load-date $(shell date +%Y-%m-%d) \
 	--source-dir data/raw
+
+load-silver:
+	APP_ENV=local python -m ingestion.load_silver \
+	--load-date $(shell date +%Y-%m-%d) \
+	--source-dir data/raw

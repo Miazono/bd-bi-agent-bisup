@@ -42,7 +42,10 @@ services:
 
   # hive-metastore — каталог Iceberg-таблиц
   hive-metastore:
-    image: apache/hive:4.0.0
+    build:
+      context: .
+      dockerfile: ./infra/hive/Dockerfile
+    image: local/hive-metastore:4.0.0-s3a
     container_name: lakehouse-hive-metastore
     user: root
     depends_on:
