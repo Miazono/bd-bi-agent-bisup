@@ -506,6 +506,88 @@ def refresh_fact_sales_line_by_month(trino: TrinoClient, batch_id: str) -> None:
         logger.info("Finished fact_sales_line month chunk: %s", month_start)
 
 
+def fact_sales_line_batch_exists(trino: TrinoClient, batch_id: str) -> bool:
+    batch = q(batch_id)
+    row = trino.fetchone(
+        f"""
+        SELECT 1
+        FROM iceberg.silver.fact_sales_line
+        WHERE batch_id = '{batch}'
+        LIMIT 1
+        """
+    )
+    exists = row is not None
+    logger.info(
+        "Existing rows in silver.fact_sales_line for batch=%s before refresh: %s",
+        batch_id,
+        exists,
+    )
+    return exists
+
+
+def merge_fact_customer_article_stats_batch_delta(
+    trino: TrinoClient,
+    batch_id: str,
+) -> None:
+    batch = q(batch_id)
+
+    sql = f"""
+    MERGE INTO iceberg.silver.fact_customer_article_stats AS target
+    USING (
+      SELECT
+        customer_id,
+        article_id,
+        min(sale_date) AS first_purchase_date,
+        max(sale_date) AS last_purchase_date,
+        count(*) AS purchase_cnt,
+        CAST(sum(price) AS DECIMAL(12,4)) AS total_revenue
+      FROM iceberg.silver.fact_sales_line
+      WHERE batch_id = '{batch}'
+        AND customer_id IS NOT NULL
+        AND article_id IS NOT NULL
+      GROUP BY customer_id, article_id
+    ) AS src
+    ON target.customer_id = src.customer_id
+       AND target.article_id = src.article_id
+    WHEN MATCHED THEN UPDATE SET
+      first_purchase_date = least(target.first_purchase_date, src.first_purchase_date),
+      last_purchase_date = greatest(target.last_purchase_date, src.last_purchase_date),
+      purchase_cnt = target.purchase_cnt + src.purchase_cnt,
+      total_revenue = CAST(target.total_revenue + src.total_revenue AS DECIMAL(12,4)),
+      avg_price = CAST(
+        (target.total_revenue + src.total_revenue)
+        / CAST(target.purchase_cnt + src.purchase_cnt AS DECIMAL(18,4))
+        AS DECIMAL(12,4)
+      )
+    WHEN NOT MATCHED THEN INSERT (
+      customer_id,
+      article_id,
+      first_purchase_date,
+      last_purchase_date,
+      purchase_cnt,
+      total_revenue,
+      avg_price
+    )
+    VALUES (
+      src.customer_id,
+      src.article_id,
+      src.first_purchase_date,
+      src.last_purchase_date,
+      src.purchase_cnt,
+      src.total_revenue,
+      CAST(
+        src.total_revenue / CAST(src.purchase_cnt AS DECIMAL(18,4))
+        AS DECIMAL(12,4)
+      )
+    )
+    """
+    execute_step(
+        trino,
+        sql,
+        f"Merge fact_customer_article_stats for new batch={batch_id}",
+    )
+
+
 def get_impacted_prefixes(
     trino: TrinoClient,
     batch_id: str,
@@ -628,6 +710,28 @@ def refresh_fact_customer_article_stats_incremental(
         logger.info("Finished impacted stats prefix: %s", prefix_value)
 
 
+def refresh_fact_customer_article_stats(
+    trino: TrinoClient,
+    batch_id: str,
+    prefix_len: int,
+    *,
+    batch_already_loaded: bool,
+) -> None:
+    if batch_already_loaded:
+        logger.info(
+            "Batch %s already exists in silver.fact_sales_line; using safe rebuild path for fact_customer_article_stats",
+            batch_id,
+        )
+        refresh_fact_customer_article_stats_incremental(trino, batch_id, prefix_len)
+        return
+
+    logger.info(
+        "Batch %s is new for silver.fact_sales_line; using merge delta path for fact_customer_article_stats",
+        batch_id,
+    )
+    merge_fact_customer_article_stats_batch_delta(trino, batch_id)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Load silver layer from bronze via Trino"
@@ -641,7 +745,7 @@ def parse_args() -> argparse.Namespace:
         "--stats-prefix-len",
         type=int,
         default=2,
-        help="How many first characters of customer_id to use for chunked stats refresh; default=2",
+        help="How many first characters of customer_id to use for rerun-safe stats rebuild; default=2",
     )
     return parser.parse_args()
 
@@ -662,6 +766,8 @@ def main() -> None:
     logger.info("Ensuring silver tables")
     ensure_silver_tables(trino)
 
+    fact_batch_already_loaded = fact_sales_line_batch_exists(trino, batch_id)
+
     logger.info("Refreshing dim_article")
     refresh_dim_article(trino, batch_id)
     log_row_count(trino, "iceberg.silver.dim_article")
@@ -679,8 +785,13 @@ def main() -> None:
     log_batch_row_count(trino, "iceberg.silver.fact_sales_line", batch_id)
     log_iceberg_files_summary(trino, "iceberg.silver.fact_sales_line")
 
-    logger.info("Refreshing derived aggregate only for impacted pairs")
-    refresh_fact_customer_article_stats_incremental(trino, batch_id, stats_prefix_len)
+    logger.info("Refreshing derived aggregate fact_customer_article_stats")
+    refresh_fact_customer_article_stats(
+        trino,
+        batch_id,
+        stats_prefix_len,
+        batch_already_loaded=fact_batch_already_loaded,
+    )
     log_iceberg_files_summary(trino, "iceberg.silver.fact_customer_article_stats")
 
     logger.info("Silver load finished successfully")
