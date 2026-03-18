@@ -1,12 +1,12 @@
-# AGENTS.md — marts
+# AGENTS.md — sql/queries/mart
 
 ## Purpose
-This directory contains analytical marts built on top of silver tables.
+This directory contains SQL transformation logic used to populate mart tables.
 
 Marts are the primary BI-facing layer for Trino and the BI agent.
 
 ## Source of truth
-Before editing marts, read:
+Before editing mart queries, read:
 1. `docs/data/schema.md`
 2. `docs/data/marts.md`
 3. this file

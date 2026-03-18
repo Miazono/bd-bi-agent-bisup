@@ -24,6 +24,18 @@ cp .env.example .env
 set -a && source .env && set +a
 ```
 
+## Память Trino для локального full-batch прогона
+
+Для одиночного локального стека с полным batch `hm_20260308_01` текущая конфигурация Trino настроена на повышенный memory profile:
+
+- `infra/trino/jvm.config`: `-Xmx8G`
+- `infra/trino/config.properties`: `query.max-memory-per-node=6GB`
+- `infra/trino/config.properties`: `query.max-memory=6GB`
+- `infra/trino/config.properties`: `query.max-total-memory=7GB`
+
+Это не отменяет chunking в `load_silver.py`, а только поднимает потолок для тяжёлых запросов.
+Если локальная машина слабее, эти значения нужно уменьшать вместе с ожиданиями по времени загрузки Silver.
+
 ## Создание бакета в MinIO
 
 Перед первым запуском пайплайна необходимо создать бакет в MinIO.
@@ -66,3 +78,13 @@ python ingestion/load_raw.py --source-dir /data/raw
 При повторном запуске файлы с неизменённым MD5 пропускаются автоматически.
 
 > **Важно:** CSV-файлы должны называться точно `articles.csv`, `customers.csv`, `transactions_train.csv`.
+
+## Построение mart-слоя
+
+После загрузки Silver можно построить materialized marts:
+
+```bash
+python -m ingestion.load_marts
+```
+
+Скрипт создаёт физические Iceberg-таблицы в схеме `mart` и выполняет полный rebuild витрин из silver-слоя.

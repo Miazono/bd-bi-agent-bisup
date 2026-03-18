@@ -61,6 +61,11 @@ Silver — это очищенная аналитическая модель, п
 - `silver.fact_sales_line`
 - `silver.fact_customer_article_stats`
 
+Ожидаемая operational-логика для Silver:
+- `silver.fact_sales_line` может обновляться chunk-ами, согласованными с физическим partitioning;
+- производные silver-агрегаты должны по возможности обновляться инкрементально по новому batch, а не через полный rebuild;
+- безопасный rebuild допустим как fallback для повторной загрузки уже существующего batch.
+
 ### 4. Marts layer
 Marts — это готовые аналитические витрины для Trino и BI-агента.
 
@@ -75,6 +80,11 @@ Marts — это готовые аналитические витрины для
 - упростить работу BI-агента;
 - зафиксировать конечные метрики;
 - дать стабильный слой для демо и evaluation.
+
+Operational-подход для marts:
+- marts материализуются как физические Iceberg-таблицы в схеме `mart`;
+- в текущей версии обновление mart-слоя выполняется через полный rebuild из silver;
+- mart-слой должен быть BI-friendly и семантически стабильным для SQL AI агента.
 
 ### 5. BI agent
 BI-агент подключается к Trino и использует semantic layer из `bi-agent/semantic_layer/`.

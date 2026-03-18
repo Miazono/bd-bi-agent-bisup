@@ -50,6 +50,14 @@
 → `silver.fact_customer_article_stats`
 → `mart.repeat_purchase_category`
 
+Примечание по mart-слою:
+- `mart.*` материализуются как Iceberg-таблицы;
+- текущее обновление marts выполняется через полный rebuild из silver-слоя.
+
+Примечание по обновлению:
+- новый `batch_id` обновляет `silver.fact_customer_article_stats` через batch-level delta merge;
+- повторная загрузка уже существующего `batch_id` пересобирает только затронутые пары `customer_id + article_id`.
+
 ## Join logic
 
 Основные связи модели:

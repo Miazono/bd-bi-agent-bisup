@@ -9,6 +9,10 @@ Mart-слой предназначен для:
 
 Primary semantic exposure для BI-agent планируется строить именно на marts.
 
+В текущей реализации marts материализуются как физические Iceberg-таблицы в схеме `mart`.
+Обновление выполняется через полный rebuild из silver-слоя.
+DDL mart-таблиц хранится в `sql/ddl/mart/`, а SQL-логика наполнения — в `sql/queries/mart/`.
+
 ---
 
 ## `mart.sales_daily_channel`

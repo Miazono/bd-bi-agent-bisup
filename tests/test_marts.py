@@ -1,3 +1,6 @@
+from ingestion import load_marts
+
+
 def test_all_marts_exist(trino_conn):
     cursor = trino_conn.cursor()
     cursor.fetchall.return_value = [
@@ -47,3 +50,30 @@ def test_mart_rfm_no_null_segment(trino_conn):
     )
     null_cnt = cursor.fetchone()[0]
     assert null_cnt == 0
+
+
+def test_load_marts_has_all_targets():
+    table_names = {table_name for table_name, _ in load_marts.mart_query_specs()}
+    expected = {
+        "iceberg.mart.sales_daily_channel",
+        "iceberg.mart.sales_monthly_category",
+        "iceberg.mart.customer_segment_monthly",
+        "iceberg.mart.repeat_purchase_category",
+        "iceberg.mart.customer_rfm_monthly",
+    }
+    assert table_names == expected
+
+
+def test_all_mart_ddl_files_exist():
+    ddl_paths = load_marts.mart_ddl_paths()
+    assert len(ddl_paths) == 5
+    for ddl_path in ddl_paths:
+        assert ddl_path.exists()
+        assert "sql/ddl/mart" in ddl_path.as_posix()
+
+
+def test_all_mart_queries_are_select_based():
+    for _, query_path in load_marts.mart_query_specs():
+        sql = query_path.read_text(encoding="utf-8")
+        assert "sql/queries/mart" in query_path.as_posix()
+        assert "CREATE OR REPLACE VIEW" not in sql

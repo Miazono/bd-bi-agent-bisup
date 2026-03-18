@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: up down restart load-raw load-bronze
+.PHONY: up down restart load-raw load-bronze load-silver load-marts
 
 init-storage:
 	APP_ENV=local python -m scripts.init_storage
@@ -27,3 +27,6 @@ load-silver:
 	APP_ENV=local python -m ingestion.load_silver \
 	--batch-id hm_20260308_01 \
 	--stats-prefix-len 1
+
+load-marts:
+	APP_ENV=local python -m ingestion.load_marts

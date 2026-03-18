@@ -6,7 +6,7 @@ This directory contains SQL definitions for physical lakehouse tables.
 Scope of this directory:
 - table creation SQL
 - CTAS / DDL-like table build statements
-- physical schema definitions for bronze and silver layers
+- physical schema definitions for bronze, silver, and mart layers
 
 This directory is not the primary place for BI-facing marts.
 
@@ -20,8 +20,7 @@ Before editing files in this directory, read:
 ## Directory intent
 - `bronze/` — DDL or CTAS definitions for bronze tables
 - `silver/` — DDL or CTAS definitions for silver tables
-
-If marts are stored separately, they should live in `sql/marts/` or `marts/`, not here.
+- `mart/` — DDL definitions for physical BI-facing mart tables
 
 ## Rules
 - Keep one table definition per file when practical.
@@ -42,6 +41,10 @@ If marts are stored separately, they should live in `sql/marts/` or `marts/`, no
 - Allow deduplication, standardization, derived business flags, and fact/dimension modeling.
 - Keep silver reusable across multiple marts when possible.
 
+### Mart
+- Store BI-facing physical Iceberg tables built from silver.
+- Keep only table definitions here; transformation `SELECT` logic belongs in `sql/queries/`.
+
 ## Current planned tables
 
 ### Bronze
@@ -55,6 +58,13 @@ If marts are stored separately, they should live in `sql/marts/` or `marts/`, no
 - `silver.dim_date`
 - `silver.fact_sales_line`
 - `silver.fact_customer_article_stats`
+
+### Mart
+- `mart.sales_daily_channel`
+- `mart.sales_monthly_category`
+- `mart.customer_segment_monthly`
+- `mart.repeat_purchase_category`
+- `mart.customer_rfm_monthly`
 
 ## Update docs together
 If a table name, grain, partitioning rule, or physical schema changes, also update:

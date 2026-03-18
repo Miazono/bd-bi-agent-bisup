@@ -99,25 +99,36 @@
 - **Grain:** 1 строка = `customer_id + article_id`
 - **Purpose:** агрегат по повторным покупкам и customer-product behavior
 - **Main fields:** `first_purchase_date`, `last_purchase_date`, `purchase_cnt`, `total_revenue`, `avg_price`
+- **Update strategy:** для нового `batch_id` обновляется через batch-level `MERGE`; при повторной загрузке уже существующего `batch_id` используется safe rebuild только для затронутых `customer_id + article_id`
 
 ## Mart layer
 
 ### `mart.sales_daily_channel`
 - **Grain:** 1 строка = `sale_date + sales_channel_id`
+- **Source:** `silver.fact_sales_line`
+- **Partitioning:** `month(sale_date)`
 - **Purpose:** дневные продажи по каналу
 
 ### `mart.sales_monthly_category`
 - **Grain:** 1 строка = `sale_month + category`
+- **Source:** `silver.fact_sales_line`, `silver.dim_article`
+- **Partitioning:** `month(sale_month)`
 - **Purpose:** месячные продажи по товарным категориям
 
 ### `mart.customer_segment_monthly`
 - **Grain:** 1 строка = `sale_month + customer_segment`
+- **Source:** `silver.fact_sales_line`, `silver.dim_customer`
+- **Partitioning:** `month(sale_month)`
 - **Purpose:** месячная аналитика по клиентским сегментам
 
 ### `mart.repeat_purchase_category`
 - **Grain:** 1 строка = `category`
+- **Source:** `silver.fact_customer_article_stats`, `silver.dim_article`
+- **Partitioning:** none
 - **Purpose:** аналитика повторных покупок по категориям
 
 ### `mart.customer_rfm_monthly`
 - **Grain:** 1 строка = `customer_id + snapshot_month`
+- **Source:** `silver.fact_sales_line`, `silver.dim_customer`
+- **Partitioning:** `month(snapshot_month)`
 - **Purpose:** RFM-профиль клиента на конец месяца

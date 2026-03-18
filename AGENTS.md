@@ -50,7 +50,7 @@ If documents conflict, prefer the most specific file for that scope.
 
 ## Always
 - Read any files in the repository.
-- Add new files in `ingestion/`, `marts/`, `bi-agent/`, `tests/`, `docs/`, and `scripts/`.
+- Add new files in `ingestion/`, `sql/`, `bi-agent/`, `tests/`, `docs/`, and `scripts/`.
 - Update `.env.example` when adding new environment variables.
 - Update relevant docs when changing data model, file names, commands, or architecture.
 
