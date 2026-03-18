@@ -3,6 +3,7 @@ Grain: 1 строка = sale_date + sales_channel_id
 Sources: silver.fact_sales_line
 Metrics: revenue, items_sold, buyers_cnt, avg_item_price
 */
+INSERT INTO iceberg.mart.sales_daily_channel
 SELECT
   sale_date,
   sales_channel_id,

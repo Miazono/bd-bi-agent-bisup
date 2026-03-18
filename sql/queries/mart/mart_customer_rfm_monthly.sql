@@ -3,6 +3,7 @@ Grain: 1 строка = customer_id + snapshot_month
 Sources: silver.fact_sales_line, silver.dim_customer
 Metrics: recency_days, frequency_365d, monetary_365d, rfm_segment
 */
+INSERT INTO iceberg.mart.customer_rfm_monthly
 WITH months AS (
   SELECT DISTINCT
     CAST(date_trunc('month', sale_date) AS DATE) AS month_start

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from ingestion.utils.s3_client import S3Client
+from ingestion.utils.sql_assets import SqlAssets
 from ingestion.utils.trino_client import TrinoClient
 from config.settings import settings
 
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 LAKEHOUSE_BUCKET = settings.lakehouse_bucket
 RAW_PREFIX = settings.raw_prefix
 BRONZE_PREFIX = settings.bronze_prefix
+SQL_ASSETS = SqlAssets()
 
 
 RAW_LAYOUT = {
@@ -78,18 +80,22 @@ RAW_TABLE_COLUMNS = {
 def q(value: str) -> str:
     return value.replace("'", "''")
 
-
-def repo_root() -> Path:
-    return Path(__file__).resolve().parents[1]
-
-
 def bronze_ddl_paths() -> List[Path]:
-    base = repo_root() / "sql" / "ddl" / "bronze"
+    base = SQL_ASSETS.path("sql", "ddl", "bronze")
     return [
         base / "bronze_hm_articles.sql",
         base / "bronze_hm_customers.sql",
         base / "bronze_hm_transactions.sql",
     ]
+
+
+def bronze_query_paths() -> Dict[str, Path]:
+    base = SQL_ASSETS.path("sql", "queries", "bronze")
+    return {
+        "hm_articles": base / "load_hm_articles.sql",
+        "hm_customers": base / "load_hm_customers.sql",
+        "hm_transactions": base / "load_hm_transactions.sql",
+    }
 
 
 def validate_raw_files(s3: S3Client, bucket: str, raw_prefix: str, load_date: str) -> Dict[str, str]:
@@ -191,39 +197,16 @@ def load_articles_to_bronze(trino: TrinoClient, batch_id: str, source_file_name:
     batch = q(batch_id)
     src = q(source_file_name)
 
-    sql = f"""
-    INSERT INTO iceberg.bronze.hm_articles
-    SELECT
-        CAST(NULLIF(article_id, '') AS BIGINT) AS article_id,
-        CAST(NULLIF(product_code, '') AS BIGINT) AS product_code,
-        NULLIF(prod_name, '') AS prod_name,
-        CAST(NULLIF(product_type_no, '') AS INTEGER) AS product_type_no,
-        NULLIF(product_type_name, '') AS product_type_name,
-        NULLIF(product_group_name, '') AS product_group_name,
-        CAST(NULLIF(graphical_appearance_no, '') AS INTEGER) AS graphical_appearance_no,
-        NULLIF(graphical_appearance_name, '') AS graphical_appearance_name,
-        CAST(NULLIF(colour_group_code, '') AS INTEGER) AS colour_group_code,
-        NULLIF(colour_group_name, '') AS colour_group_name,
-        CAST(NULLIF(perceived_colour_value_id, '') AS INTEGER) AS perceived_colour_value_id,
-        NULLIF(perceived_colour_value_name, '') AS perceived_colour_value_name,
-        CAST(NULLIF(perceived_colour_master_id, '') AS INTEGER) AS perceived_colour_master_id,
-        NULLIF(perceived_colour_master_name, '') AS perceived_colour_master_name,
-        CAST(NULLIF(department_no, '') AS INTEGER) AS department_no,
-        NULLIF(department_name, '') AS department_name,
-        NULLIF(index_code, '') AS index_code,
-        NULLIF(index_name, '') AS index_name,
-        CAST(NULLIF(index_group_no, '') AS INTEGER) AS index_group_no,
-        NULLIF(index_group_name, '') AS index_group_name,
-        CAST(NULLIF(section_no, '') AS INTEGER) AS section_no,
-        NULLIF(section_name, '') AS section_name,
-        CAST(NULLIF(garment_group_no, '') AS INTEGER) AS garment_group_no,
-        NULLIF(garment_group_name, '') AS garment_group_name,
-        NULLIF(detail_desc, '') AS detail_desc,
-        CURRENT_TIMESTAMP AS ingest_ts,
-        '{src}' AS source_file_name,
-        '{batch}' AS batch_id
-    FROM hive.raw.hm_articles_raw
-    """
+    sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "bronze",
+        "load_hm_articles.sql",
+        replacements={
+            "SOURCE_FILE_NAME": src,
+            "BATCH_ID": batch,
+        },
+    )
     trino.execute(sql)
 
 
@@ -231,25 +214,16 @@ def load_customers_to_bronze(trino: TrinoClient, batch_id: str, source_file_name
     batch = q(batch_id)
     src = q(source_file_name)
 
-    sql = f"""
-    INSERT INTO iceberg.bronze.hm_customers
-    SELECT
-        NULLIF(customer_id, '') AS customer_id,
-
-        TRY_CAST(regexp_replace(NULLIF(trim(fn), ''), '\\\\.0+$', '') AS INTEGER) AS fn,
-        TRY_CAST(regexp_replace(NULLIF(trim(active), ''), '\\\\.0+$', '') AS INTEGER) AS active,
-
-        NULLIF(club_member_status, '') AS club_member_status,
-        NULLIF(fashion_news_frequency, '') AS fashion_news_frequency,
-
-        TRY_CAST(regexp_replace(NULLIF(trim(age), ''), '\\\\.0+$', '') AS INTEGER) AS age,
-
-        NULLIF(postal_code, '') AS postal_code,
-        CURRENT_TIMESTAMP AS ingest_ts,
-        '{src}' AS source_file_name,
-        '{batch}' AS batch_id
-    FROM hive.raw.hm_customers_raw
-    """
+    sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "bronze",
+        "load_hm_customers.sql",
+        replacements={
+            "SOURCE_FILE_NAME": src,
+            "BATCH_ID": batch,
+        },
+    )
     trino.execute(sql)
 
 
@@ -257,19 +231,16 @@ def load_transactions_to_bronze(trino: TrinoClient, batch_id: str, source_file_n
     batch = q(batch_id)
     src = q(source_file_name)
 
-    sql = f"""
-    INSERT INTO iceberg.bronze.hm_transactions
-    SELECT
-        CAST(NULLIF(t_dat, '') AS DATE) AS t_dat,
-        NULLIF(customer_id, '') AS customer_id,
-        CAST(NULLIF(article_id, '') AS BIGINT) AS article_id,
-        CAST(NULLIF(price, '') AS DECIMAL(12,4)) AS price,
-        CAST(NULLIF(sales_channel_id, '') AS INTEGER) AS sales_channel_id,
-        CURRENT_TIMESTAMP AS ingest_ts,
-        '{src}' AS source_file_name,
-        '{batch}' AS batch_id
-    FROM hive.raw.hm_transactions_raw
-    """
+    sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "bronze",
+        "load_hm_transactions.sql",
+        replacements={
+            "SOURCE_FILE_NAME": src,
+            "BATCH_ID": batch,
+        },
+    )
     trino.execute(sql)
 
 

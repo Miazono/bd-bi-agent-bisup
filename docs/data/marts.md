@@ -12,6 +12,7 @@ Primary semantic exposure для BI-agent планируется строить 
 В текущей реализации marts материализуются как физические Iceberg-таблицы в схеме `mart`.
 Обновление выполняется через полный rebuild из silver-слоя.
 DDL mart-таблиц хранится в `sql/ddl/mart/`, а SQL-логика наполнения — в `sql/queries/mart/`.
+Для единообразия query-файлы mart теперь тоже содержат полноценные исполняемые `INSERT INTO ... SELECT ...`, а не только `SELECT`.
 
 ---
 

@@ -72,8 +72,9 @@ def test_all_mart_ddl_files_exist():
         assert "sql/ddl/mart" in ddl_path.as_posix()
 
 
-def test_all_mart_queries_are_select_based():
+def test_all_mart_queries_are_insert_based():
     for _, query_path in load_marts.mart_query_specs():
         sql = query_path.read_text(encoding="utf-8")
         assert "sql/queries/mart" in query_path.as_posix()
+        assert "INSERT INTO iceberg.mart." in sql
         assert "CREATE OR REPLACE VIEW" not in sql

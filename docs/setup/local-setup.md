@@ -34,6 +34,10 @@ set -a && source .env && set +a
 - `infra/trino/config.properties`: `query.max-total-memory=7GB`
 
 Это не отменяет chunking в `load_silver.py`, а только поднимает потолок для тяжёлых запросов.
+
+Для быстрых smoke-проверок `load_silver.py` поддерживает:
+- `--months 2020-09-01` или список через запятую, чтобы перегрузить только выбранные month-chunk для `fact_sales_line`
+- `--skip-stats`, чтобы пропустить пересчёт `silver.fact_customer_article_stats`
 Если локальная машина слабее, эти значения нужно уменьшать вместе с ожиданиями по времени загрузки Silver.
 
 ## Создание бакета в MinIO

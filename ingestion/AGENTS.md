@@ -17,6 +17,9 @@ Before changing ingestion logic, read:
 - `load_bronze.py` — build technical Iceberg bronze tables close to source structure
 - `load_silver.py` — build cleaned analytical silver tables from bronze
 
+Large reusable SQL blocks should live in `sql/queries/bronze/`, `sql/queries/silver/`, and `sql/queries/mart/`.
+Keep orchestration, chunk routing, and small operational checks in Python loaders, and prefer shared utilities from `ingestion/utils/` when logic repeats.
+
 ## Layer rules
 
 ### Raw

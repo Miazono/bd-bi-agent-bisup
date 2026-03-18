@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from config.settings import settings
+from ingestion.utils.sql_assets import SqlAssets
 from ingestion.utils.trino_client import TrinoClient
 
 logging.basicConfig(
@@ -18,18 +19,14 @@ logger = logging.getLogger(__name__)
 
 LAKEHOUSE_BUCKET = settings.lakehouse_bucket
 SILVER_PREFIX = settings.silver_prefix
+SQL_ASSETS = SqlAssets()
 
 
 def q(value: str) -> str:
     return value.replace("'", "''")
 
-
-def repo_root() -> Path:
-    return Path(__file__).resolve().parents[1]
-
-
 def silver_ddl_paths() -> List[Path]:
-    base = repo_root() / "sql" / "ddl" / "silver"
+    base = SQL_ASSETS.path("sql", "ddl", "silver")
     return [
         base / "silver_dim_article.sql",
         base / "silver_dim_customer.sql",
@@ -37,6 +34,22 @@ def silver_ddl_paths() -> List[Path]:
         base / "silver_fact_sales_line.sql",
         base / "silver_fact_customer_article_stats.sql",
     ]
+
+
+def silver_query_paths() -> Dict[str, Path]:
+    base = SQL_ASSETS.path("sql", "queries", "silver")
+    return {
+        "refresh_dim_article_delete": base / "refresh_dim_article_delete.sql",
+        "refresh_dim_article_insert": base / "refresh_dim_article_insert.sql",
+        "refresh_dim_customer_delete": base / "refresh_dim_customer_delete.sql",
+        "refresh_dim_customer_insert": base / "refresh_dim_customer_insert.sql",
+        "upsert_dim_date": base / "upsert_dim_date.sql",
+        "refresh_fact_sales_line_delete": base / "refresh_fact_sales_line_delete.sql",
+        "refresh_fact_sales_line_insert": base / "refresh_fact_sales_line_insert.sql",
+        "merge_fact_customer_article_stats_batch_delta": base / "merge_fact_customer_article_stats_batch_delta.sql",
+        "delete_impacted_stats_prefix": base / "delete_impacted_stats_prefix.sql",
+        "insert_impacted_stats_prefix": base / "insert_impacted_stats_prefix.sql",
+    }
 
 
 def execute_step(trino: TrinoClient, sql: str, title: str) -> None:
@@ -140,274 +153,53 @@ def ensure_silver_tables(trino: TrinoClient) -> None:
 
 def refresh_dim_article(trino: TrinoClient, batch_id: str) -> None:
     batch = q(batch_id)
-
-    delete_sql = f"""
-    DELETE FROM iceberg.silver.dim_article
-    WHERE article_id IN (
-      SELECT DISTINCT article_id
-      FROM iceberg.bronze.hm_articles
-      WHERE batch_id = '{batch}'
-        AND article_id IS NOT NULL
+    delete_sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "silver",
+        "refresh_dim_article_delete.sql",
+        replacements={"BATCH_ID": batch},
     )
-    """
     execute_step(trino, delete_sql, f"Delete impacted article_ids for batch={batch_id}")
-
-    insert_sql = f"""
-    INSERT INTO iceberg.silver.dim_article (
-      article_id,
-      product_code,
-      prod_name,
-      product_type_no,
-      product_type_name,
-      product_group_name,
-      graphical_appearance_no,
-      graphical_appearance_name,
-      colour_group_code,
-      colour_group_name,
-      perceived_colour_value_id,
-      perceived_colour_value_name,
-      perceived_colour_master_id,
-      perceived_colour_master_name,
-      department_no,
-      department_name,
-      index_code,
-      index_name,
-      index_group_no,
-      index_group_name,
-      section_no,
-      section_name,
-      garment_group_no,
-      garment_group_name,
-      detail_desc,
-      is_ladieswear,
-      is_menswear,
-      is_kids,
-      color_family
+    insert_sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "silver",
+        "refresh_dim_article_insert.sql",
+        replacements={"BATCH_ID": batch},
     )
-    WITH impacted_keys AS (
-      SELECT DISTINCT article_id
-      FROM iceberg.bronze.hm_articles
-      WHERE batch_id = '{batch}'
-        AND article_id IS NOT NULL
-    ),
-    ranked AS (
-      SELECT
-        b.article_id,
-        b.product_code,
-        b.prod_name,
-        b.product_type_no,
-        b.product_type_name,
-        b.product_group_name,
-        b.graphical_appearance_no,
-        b.graphical_appearance_name,
-        b.colour_group_code,
-        b.colour_group_name,
-        b.perceived_colour_value_id,
-        b.perceived_colour_value_name,
-        b.perceived_colour_master_id,
-        b.perceived_colour_master_name,
-        b.department_no,
-        b.department_name,
-        b.index_code,
-        b.index_name,
-        b.index_group_no,
-        b.index_group_name,
-        b.section_no,
-        b.section_name,
-        b.garment_group_no,
-        b.garment_group_name,
-        b.detail_desc,
-        b.ingest_ts,
-        b.batch_id,
-        b.source_file_name,
-        row_number() OVER (
-          PARTITION BY b.article_id
-          ORDER BY b.ingest_ts DESC, b.batch_id DESC, b.source_file_name DESC
-        ) AS rn
-      FROM iceberg.bronze.hm_articles b
-      JOIN impacted_keys k
-        ON b.article_id = k.article_id
-    )
-    SELECT
-      article_id,
-      product_code,
-      prod_name,
-      product_type_no,
-      product_type_name,
-      product_group_name,
-      graphical_appearance_no,
-      graphical_appearance_name,
-      colour_group_code,
-      colour_group_name,
-      perceived_colour_value_id,
-      perceived_colour_value_name,
-      perceived_colour_master_id,
-      perceived_colour_master_name,
-      department_no,
-      department_name,
-      index_code,
-      index_name,
-      index_group_no,
-      index_group_name,
-      section_no,
-      section_name,
-      garment_group_no,
-      garment_group_name,
-      detail_desc,
-      CASE
-        WHEN regexp_like(
-          lower(coalesce(index_name, '') || ' ' || coalesce(garment_group_name, '')),
-          '(^|[^a-z])(ladies|ladieswear)([^a-z]|$)'
-        )
-        THEN true
-        ELSE false
-      END AS is_ladieswear,
-      CASE
-        WHEN regexp_like(
-          lower(coalesce(index_name, '') || ' ' || coalesce(garment_group_name, '')),
-          '(^|[^a-z])men([^a-z]|$)'
-        )
-        THEN true
-        ELSE false
-      END AS is_menswear,
-      CASE
-        WHEN regexp_like(
-          lower(coalesce(index_name, '') || ' ' || coalesce(garment_group_name, '')),
-          '(^|[^a-z])(kids|kid|baby|children)([^a-z]|$)'
-        )
-        THEN true
-        ELSE false
-      END AS is_kids,
-      CAST(NULL AS VARCHAR) AS color_family
-    FROM ranked
-    WHERE rn = 1
-    """
     execute_step(trino, insert_sql, f"Insert impacted article_ids for batch={batch_id}")
 
 
 def refresh_dim_customer(trino: TrinoClient, batch_id: str) -> None:
     batch = q(batch_id)
-
-    delete_sql = f"""
-    DELETE FROM iceberg.silver.dim_customer
-    WHERE customer_id IN (
-      SELECT DISTINCT customer_id
-      FROM iceberg.bronze.hm_customers
-      WHERE batch_id = '{batch}'
-        AND customer_id IS NOT NULL
+    delete_sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "silver",
+        "refresh_dim_customer_delete.sql",
+        replacements={"BATCH_ID": batch},
     )
-    """
     execute_step(trino, delete_sql, f"Delete impacted customer_ids for batch={batch_id}")
-
-    insert_sql = f"""
-    INSERT INTO iceberg.silver.dim_customer (
-      customer_id,
-      fn,
-      active,
-      club_member_status,
-      fashion_news_frequency,
-      age,
-      postal_code,
-      age_band,
-      is_active_customer,
-      is_fn_flag_present
+    insert_sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "silver",
+        "refresh_dim_customer_insert.sql",
+        replacements={"BATCH_ID": batch},
     )
-    WITH impacted_keys AS (
-      SELECT DISTINCT customer_id
-      FROM iceberg.bronze.hm_customers
-      WHERE batch_id = '{batch}'
-        AND customer_id IS NOT NULL
-    ),
-    ranked AS (
-      SELECT
-        b.customer_id,
-        b.fn,
-        b.active,
-        b.club_member_status,
-        b.fashion_news_frequency,
-        b.age,
-        b.postal_code,
-        b.ingest_ts,
-        b.batch_id,
-        b.source_file_name,
-        row_number() OVER (
-          PARTITION BY b.customer_id
-          ORDER BY b.ingest_ts DESC, b.batch_id DESC, b.source_file_name DESC
-        ) AS rn
-      FROM iceberg.bronze.hm_customers b
-      JOIN impacted_keys k
-        ON b.customer_id = k.customer_id
-    )
-    SELECT
-      customer_id,
-      fn,
-      active,
-      club_member_status,
-      fashion_news_frequency,
-      age,
-      postal_code,
-      CASE
-        WHEN age IS NULL THEN 'unknown'
-        WHEN age < 18 THEN 'under_18'
-        WHEN age BETWEEN 18 AND 24 THEN '18_24'
-        WHEN age BETWEEN 25 AND 34 THEN '25_34'
-        WHEN age BETWEEN 35 AND 44 THEN '35_44'
-        WHEN age BETWEEN 45 AND 54 THEN '45_54'
-        WHEN age BETWEEN 55 AND 64 THEN '55_64'
-        ELSE '65_plus'
-      END AS age_band,
-      CASE
-        WHEN active = 1 THEN true
-        ELSE false
-      END AS is_active_customer,
-      CASE
-        WHEN fn IS NOT NULL THEN true
-        ELSE false
-      END AS is_fn_flag_present
-    FROM ranked
-    WHERE rn = 1
-    """
     execute_step(trino, insert_sql, f"Insert impacted customer_ids for batch={batch_id}")
 
 
 def upsert_dim_date(trino: TrinoClient, batch_id: str) -> None:
     batch = q(batch_id)
-
-    sql = f"""
-    INSERT INTO iceberg.silver.dim_date (
-      date_day,
-      date_year,
-      date_month,
-      date_day_of_month,
-      date_day_of_week,
-      week_of_year
+    sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "silver",
+        "upsert_dim_date.sql",
+        replacements={"BATCH_ID": batch},
     )
-    WITH bounds AS (
-      SELECT
-        min(t_dat) AS min_date,
-        max(t_dat) AS max_date
-      FROM iceberg.bronze.hm_transactions
-      WHERE batch_id = '{batch}'
-    ),
-    dates AS (
-      SELECT d AS date_day
-      FROM bounds
-      CROSS JOIN UNNEST(sequence(min_date, max_date)) AS t(d)
-    )
-    SELECT
-      d.date_day,
-      year(d.date_day) AS date_year,
-      month(d.date_day) AS date_month,
-      day(d.date_day) AS date_day_of_month,
-      day_of_week(d.date_day) AS date_day_of_week,
-      week(d.date_day) AS week_of_year
-    FROM dates d
-    WHERE NOT EXISTS (
-      SELECT 1
-      FROM iceberg.silver.dim_date x
-      WHERE x.date_day = d.date_day
-    )
-    """
     execute_step(trino, sql, f"Upsert dim_date for batch={batch_id}")
 
 
@@ -434,6 +226,43 @@ def get_batch_months(trino: TrinoClient, batch_id: str) -> List[str]:
     return months
 
 
+def parse_months_arg(months_arg: str | None) -> List[str]:
+    if not months_arg:
+        return []
+    months = [value.strip() for value in months_arg.split(",") if value.strip()]
+    if not months:
+        return []
+
+    normalized: List[str] = []
+    for month_start in months:
+        try:
+            parsed = date.fromisoformat(month_start)
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid month value {month_start!r}. Expected YYYY-MM-DD, for example 2020-09-01."
+            ) from exc
+        normalized.append(parsed.isoformat())
+
+    return normalized
+
+
+def resolve_months_to_process(batch_months: List[str], requested_months: List[str]) -> List[str]:
+    if not batch_months:
+        return []
+    if not requested_months:
+        return batch_months
+
+    batch_months_set = set(batch_months)
+    missing = [month for month in requested_months if month not in batch_months_set]
+    if missing:
+        raise RuntimeError(
+            "Requested months are absent in the bronze batch: " + ", ".join(missing)
+        )
+
+    ordered = [month for month in batch_months if month in set(requested_months)]
+    return ordered
+
+
 def month_filter(column_name: str, month_start: str) -> str:
     return (
         f"{column_name} >= DATE '{month_start}' "
@@ -450,41 +279,32 @@ def refresh_fact_sales_line_month(
     month_predicate = month_filter("sale_date", month_start)
     bronze_month_predicate = month_filter("t_dat", month_start)
 
-    delete_sql = f"""
-    DELETE FROM iceberg.silver.fact_sales_line
-    WHERE batch_id = '{batch}'
-      AND {month_predicate}
-    """
+    delete_sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "silver",
+        "refresh_fact_sales_line_delete.sql",
+        replacements={
+            "BATCH_ID": batch,
+            "SALE_MONTH_PREDICATE": month_predicate,
+        },
+    )
     execute_step(
         trino,
         delete_sql,
         f"Delete fact_sales_line batch={batch_id} month={month_start}",
     )
 
-    insert_sql = f"""
-    INSERT INTO iceberg.silver.fact_sales_line (
-      sale_date,
-      customer_id,
-      article_id,
-      price,
-      sales_channel_id,
-      ingest_ts,
-      source_file_name,
-      batch_id
+    insert_sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "silver",
+        "refresh_fact_sales_line_insert.sql",
+        replacements={
+            "BATCH_ID": batch,
+            "BRONZE_MONTH_PREDICATE": bronze_month_predicate,
+        },
     )
-    SELECT
-      t_dat AS sale_date,
-      customer_id,
-      article_id,
-      price,
-      sales_channel_id,
-      ingest_ts,
-      source_file_name,
-      batch_id
-    FROM iceberg.bronze.hm_transactions
-    WHERE batch_id = '{batch}'
-      AND {bronze_month_predicate}
-    """
     execute_step(
         trino,
         insert_sql,
@@ -492,8 +312,13 @@ def refresh_fact_sales_line_month(
     )
 
 
-def refresh_fact_sales_line_by_month(trino: TrinoClient, batch_id: str) -> None:
-    months = get_batch_months(trino, batch_id)
+def refresh_fact_sales_line_by_month(
+    trino: TrinoClient,
+    batch_id: str,
+    requested_months: List[str] | None = None,
+) -> None:
+    batch_months = get_batch_months(trino, batch_id)
+    months = resolve_months_to_process(batch_months, requested_months or [])
 
     if not months:
         raise RuntimeError(f"No months found in bronze.hm_transactions for batch {batch_id!r}")
@@ -531,56 +356,13 @@ def merge_fact_customer_article_stats_batch_delta(
 ) -> None:
     batch = q(batch_id)
 
-    sql = f"""
-    MERGE INTO iceberg.silver.fact_customer_article_stats AS target
-    USING (
-      SELECT
-        customer_id,
-        article_id,
-        min(sale_date) AS first_purchase_date,
-        max(sale_date) AS last_purchase_date,
-        count(*) AS purchase_cnt,
-        CAST(sum(price) AS DECIMAL(12,4)) AS total_revenue
-      FROM iceberg.silver.fact_sales_line
-      WHERE batch_id = '{batch}'
-        AND customer_id IS NOT NULL
-        AND article_id IS NOT NULL
-      GROUP BY customer_id, article_id
-    ) AS src
-    ON target.customer_id = src.customer_id
-       AND target.article_id = src.article_id
-    WHEN MATCHED THEN UPDATE SET
-      first_purchase_date = least(target.first_purchase_date, src.first_purchase_date),
-      last_purchase_date = greatest(target.last_purchase_date, src.last_purchase_date),
-      purchase_cnt = target.purchase_cnt + src.purchase_cnt,
-      total_revenue = CAST(target.total_revenue + src.total_revenue AS DECIMAL(12,4)),
-      avg_price = CAST(
-        (target.total_revenue + src.total_revenue)
-        / CAST(target.purchase_cnt + src.purchase_cnt AS DECIMAL(18,4))
-        AS DECIMAL(12,4)
-      )
-    WHEN NOT MATCHED THEN INSERT (
-      customer_id,
-      article_id,
-      first_purchase_date,
-      last_purchase_date,
-      purchase_cnt,
-      total_revenue,
-      avg_price
+    sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "silver",
+        "merge_fact_customer_article_stats_batch_delta.sql",
+        replacements={"BATCH_ID": batch},
     )
-    VALUES (
-      src.customer_id,
-      src.article_id,
-      src.first_purchase_date,
-      src.last_purchase_date,
-      src.purchase_cnt,
-      src.total_revenue,
-      CAST(
-        src.total_revenue / CAST(src.purchase_cnt AS DECIMAL(18,4))
-        AS DECIMAL(12,4)
-      )
-    )
-    """
     execute_step(
         trino,
         sql,
@@ -617,20 +399,17 @@ def delete_impacted_stats_prefix(
     batch = q(batch_id)
     prefix = q(prefix_value)
 
-    sql = f"""
-    DELETE FROM iceberg.silver.fact_customer_article_stats
-    WHERE (customer_id, article_id) IN (
-      SELECT customer_id, article_id
-      FROM (
-        SELECT DISTINCT customer_id, article_id
-        FROM iceberg.bronze.hm_transactions
-        WHERE batch_id = '{batch}'
-          AND customer_id IS NOT NULL
-          AND article_id IS NOT NULL
-          AND substr(customer_id, 1, {prefix_len}) = '{prefix}'
-      ) impacted_pairs
+    sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "silver",
+        "delete_impacted_stats_prefix.sql",
+        replacements={
+            "BATCH_ID": batch,
+            "PREFIX_LEN": str(prefix_len),
+            "PREFIX_VALUE": prefix,
+        },
     )
-    """
     execute_step(
         trino,
         sql,
@@ -647,38 +426,17 @@ def insert_impacted_stats_prefix(
     batch = q(batch_id)
     prefix = q(prefix_value)
 
-    sql = f"""
-    INSERT INTO iceberg.silver.fact_customer_article_stats (
-      customer_id,
-      article_id,
-      first_purchase_date,
-      last_purchase_date,
-      purchase_cnt,
-      total_revenue,
-      avg_price
+    sql = SQL_ASSETS.render(
+        "sql",
+        "queries",
+        "silver",
+        "insert_impacted_stats_prefix.sql",
+        replacements={
+            "BATCH_ID": batch,
+            "PREFIX_LEN": str(prefix_len),
+            "PREFIX_VALUE": prefix,
+        },
     )
-    WITH impacted_pairs AS (
-      SELECT DISTINCT customer_id, article_id
-      FROM iceberg.bronze.hm_transactions
-      WHERE batch_id = '{batch}'
-        AND customer_id IS NOT NULL
-        AND article_id IS NOT NULL
-        AND substr(customer_id, 1, {prefix_len}) = '{prefix}'
-    )
-    SELECT
-      f.customer_id,
-      f.article_id,
-      min(f.sale_date) AS first_purchase_date,
-      max(f.sale_date) AS last_purchase_date,
-      count(*) AS purchase_cnt,
-      CAST(sum(f.price) AS DECIMAL(12,4)) AS total_revenue,
-      CAST(avg(f.price) AS DECIMAL(12,4)) AS avg_price
-    FROM iceberg.silver.fact_sales_line f
-    JOIN impacted_pairs p
-      ON f.customer_id = p.customer_id
-     AND f.article_id = p.article_id
-    GROUP BY f.customer_id, f.article_id
-    """
     execute_step(
       trino,
       sql,
@@ -747,6 +505,15 @@ def parse_args() -> argparse.Namespace:
         default=2,
         help="How many first characters of customer_id to use for rerun-safe stats rebuild; default=2",
     )
+    parser.add_argument(
+        "--months",
+        help="Optional comma-separated list of month starts to process for fact_sales_line, for example 2020-08-01,2020-09-01",
+    )
+    parser.add_argument(
+        "--skip-stats",
+        action="store_true",
+        help="Skip refresh of silver.fact_customer_article_stats for faster smoke tests",
+    )
     return parser.parse_args()
 
 
@@ -754,6 +521,7 @@ def main() -> None:
     args = parse_args()
     batch_id = args.batch_id
     stats_prefix_len = args.stats_prefix_len
+    requested_months = parse_months_arg(args.months)
 
     trino = TrinoClient()
 
@@ -766,7 +534,9 @@ def main() -> None:
     logger.info("Ensuring silver tables")
     ensure_silver_tables(trino)
 
-    fact_batch_already_loaded = fact_sales_line_batch_exists(trino, batch_id)
+    fact_batch_already_loaded = False
+    if not args.skip_stats:
+        fact_batch_already_loaded = fact_sales_line_batch_exists(trino, batch_id)
 
     logger.info("Refreshing dim_article")
     refresh_dim_article(trino, batch_id)
@@ -781,18 +551,21 @@ def main() -> None:
     log_row_count(trino, "iceberg.silver.dim_date")
 
     logger.info("Refreshing base fact by month")
-    refresh_fact_sales_line_by_month(trino, batch_id)
+    refresh_fact_sales_line_by_month(trino, batch_id, requested_months)
     log_batch_row_count(trino, "iceberg.silver.fact_sales_line", batch_id)
     log_iceberg_files_summary(trino, "iceberg.silver.fact_sales_line")
 
-    logger.info("Refreshing derived aggregate fact_customer_article_stats")
-    refresh_fact_customer_article_stats(
-        trino,
-        batch_id,
-        stats_prefix_len,
-        batch_already_loaded=fact_batch_already_loaded,
-    )
-    log_iceberg_files_summary(trino, "iceberg.silver.fact_customer_article_stats")
+    if args.skip_stats:
+        logger.info("Skipping refresh of silver.fact_customer_article_stats because --skip-stats was provided")
+    else:
+        logger.info("Refreshing derived aggregate fact_customer_article_stats")
+        refresh_fact_customer_article_stats(
+            trino,
+            batch_id,
+            stats_prefix_len,
+            batch_already_loaded=fact_batch_already_loaded,
+        )
+        log_iceberg_files_summary(trino, "iceberg.silver.fact_customer_article_stats")
 
     logger.info("Silver load finished successfully")
 

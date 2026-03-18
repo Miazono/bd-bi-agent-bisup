@@ -3,6 +3,7 @@ Grain: 1 строка = sale_month + customer_segment
 Sources: silver.fact_sales_line, silver.dim_customer
 Metrics: revenue, buyers_cnt, purchase_lines_cnt, revenue_per_buyer, avg_item_price
 */
+INSERT INTO iceberg.mart.customer_segment_monthly
 SELECT
   CAST(date_trunc('month', f.sale_date) AS DATE) AS sale_month,
   COALESCE(c.club_member_status, 'unknown') AS customer_segment,

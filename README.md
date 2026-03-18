@@ -62,7 +62,7 @@
 - `infra/` — инфраструктурные конфиги и compose
 - `ingestion/` — скрипты загрузки и построения слоёв
 - `sql/ddl/` — DDL для физических таблиц bronze, silver и mart
-- `sql/queries/` — SQL-логика наполнения и аналитических преобразований
+- `sql/queries/` — SQL-логика наполнения и аналитических преобразований для bronze, silver и mart
 - `bi-agent/` — semantic layer, prompts, evaluation
 - `docs/` — архитектурная и data-документация
 - `scripts/` — служебные скрипты

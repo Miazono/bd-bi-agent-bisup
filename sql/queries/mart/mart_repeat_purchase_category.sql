@@ -3,6 +3,7 @@ Grain: 1 строка = category
 Sources: silver.fact_customer_article_stats, silver.dim_article
 Metrics: repeat_pairs_cnt, repeat_customers_cnt, avg_purchase_cnt, repeat_revenue
 */
+INSERT INTO iceberg.mart.repeat_purchase_category
 SELECT
   a.product_group_name AS category,
   count(*) AS repeat_pairs_cnt,

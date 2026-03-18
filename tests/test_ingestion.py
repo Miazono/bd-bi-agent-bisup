@@ -1,6 +1,6 @@
 from unittest.mock import call
 
-from ingestion import load_raw, load_silver
+from ingestion import load_bronze, load_raw, load_silver
 
 
 def test_raw_upload_creates_objects(tmp_path, minio_client, monkeypatch):
@@ -47,6 +47,61 @@ def test_bronze_row_counts(trino_conn):
     executed_sql = [call_item.args[0] for call_item in cursor.execute.call_args_list]
     for table_name in tables:
         assert f"SELECT COUNT(*) FROM {table_name}" in executed_sql
+
+
+def test_bronze_query_files_exist():
+    query_paths = load_bronze.bronze_query_paths()
+    assert set(query_paths) == {"hm_articles", "hm_customers", "hm_transactions"}
+    for query_path in query_paths.values():
+        assert query_path.exists()
+        assert "sql/queries/bronze" in query_path.as_posix()
+
+
+def test_silver_query_files_exist():
+    query_paths = load_silver.silver_query_paths()
+    expected = {
+        "refresh_dim_article_delete",
+        "refresh_dim_article_insert",
+        "refresh_dim_customer_delete",
+        "refresh_dim_customer_insert",
+        "upsert_dim_date",
+        "refresh_fact_sales_line_delete",
+        "refresh_fact_sales_line_insert",
+        "merge_fact_customer_article_stats_batch_delta",
+        "delete_impacted_stats_prefix",
+        "insert_impacted_stats_prefix",
+    }
+    assert set(query_paths) == expected
+    for query_path in query_paths.values():
+        assert query_path.exists()
+        assert "sql/queries/silver" in query_path.as_posix()
+
+
+def test_parse_months_arg_normalizes_values():
+    assert load_silver.parse_months_arg("2020-08-01, 2020-09-01") == [
+        "2020-08-01",
+        "2020-09-01",
+    ]
+
+
+def test_resolve_months_to_process_keeps_batch_order():
+    resolved = load_silver.resolve_months_to_process(
+        ["2020-07-01", "2020-08-01", "2020-09-01"],
+        ["2020-09-01", "2020-08-01"],
+    )
+    assert resolved == ["2020-08-01", "2020-09-01"]
+
+
+def test_resolve_months_to_process_rejects_missing_month():
+    try:
+        load_silver.resolve_months_to_process(
+            ["2020-08-01", "2020-09-01"],
+            ["2020-10-01"],
+        )
+    except RuntimeError as exc:
+        assert "2020-10-01" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for missing requested month")
 
 
 def test_fact_sales_line_batch_exists_checks_limit_one():
@@ -110,3 +165,26 @@ def test_refresh_fact_customer_article_stats_uses_rebuild_for_existing_batch(mon
     )
 
     assert calls == [("rebuild", "hm_20260308_01", 2)]
+
+
+def test_refresh_fact_sales_line_by_month_uses_requested_subset(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(
+        load_silver,
+        "get_batch_months",
+        lambda trino, batch_id: ["2020-08-01", "2020-09-01", "2020-10-01"],
+    )
+    monkeypatch.setattr(
+        load_silver,
+        "refresh_fact_sales_line_month",
+        lambda trino, batch_id, month_start: calls.append(month_start),
+    )
+
+    load_silver.refresh_fact_sales_line_by_month(
+        trino=object(),
+        batch_id="hm_20260308_01",
+        requested_months=["2020-09-01"],
+    )
+
+    assert calls == ["2020-09-01"]

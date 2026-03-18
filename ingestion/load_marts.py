@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from config.settings import settings
+from ingestion.utils.sql_assets import SqlAssets
 from ingestion.utils.trino_client import TrinoClient
 
 logging.basicConfig(
@@ -16,14 +17,11 @@ logger = logging.getLogger(__name__)
 
 LAKEHOUSE_BUCKET = settings.lakehouse_bucket
 MART_PREFIX = settings.mart_prefix
-
-
-def repo_root() -> Path:
-    return Path(__file__).resolve().parents[1]
+SQL_ASSETS = SqlAssets()
 
 
 def mart_ddl_paths() -> List[Path]:
-    base = repo_root() / "sql" / "ddl" / "mart"
+    base = SQL_ASSETS.path("sql", "ddl", "mart")
     return [
         base / "mart_sales_daily_channel.sql",
         base / "mart_sales_monthly_category.sql",
@@ -34,7 +32,7 @@ def mart_ddl_paths() -> List[Path]:
 
 
 def mart_query_specs() -> List[Tuple[str, Path]]:
-    base = repo_root() / "sql" / "queries" / "mart"
+    base = SQL_ASSETS.path("sql", "queries", "mart")
     return [
         ("iceberg.mart.sales_daily_channel", base / "mart_sales_daily_channel.sql"),
         ("iceberg.mart.sales_monthly_category", base / "mart_sales_monthly_category.sql"),
@@ -110,9 +108,9 @@ def rebuild_mart_table(trino: TrinoClient, table_name: str, query_path: Path) ->
     if not query_path.exists():
         raise FileNotFoundError(f"Mart query file not found: {query_path}")
 
-    select_sql = query_path.read_text(encoding="utf-8").strip().rstrip(";")
+    insert_sql = query_path.read_text(encoding="utf-8").strip().rstrip(";")
     execute_step(trino, f"DELETE FROM {table_name}", f"Clear {table_name}")
-    execute_step(trino, f"INSERT INTO {table_name} {select_sql}", f"Populate {table_name}")
+    execute_step(trino, insert_sql, f"Populate {table_name}")
 
 
 def main() -> None:
