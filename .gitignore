@@ -6,3 +6,5 @@ __pycache__/
 *.pyc
 .venv
 data/raw/
+infra/wrenai/data/*
+!infra/wrenai/data/.gitkeep

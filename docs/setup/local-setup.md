@@ -17,11 +17,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Настроить переменные окружения
-cp .env.example .env
-# Отредактировать .env под свои значения
+cp .env.local.example .env.local
+cp .env.docker.example .env.docker
+# Отредактировать оба файла под свои значения
 
-# 4. Загрузить переменные (нужно повторять при каждой новой сессии)
-set -a && source .env && set +a
+# 4. Загрузить переменные для локальных Python-скриптов
+set -a && source .env.local && set +a
 ```
 
 ## Память Trino для локального full-batch прогона
@@ -92,3 +93,22 @@ python -m ingestion.load_marts
 ```
 
 Скрипт создаёт физические Iceberg-таблицы в схеме `mart` и выполняет полный rebuild витрин из silver-слоя.
+
+## Подъём WrenAI
+
+WrenAI поднимается в той же docker-сети, что и `trino`, но вынесен в отдельный compose profile `wrenai`.
+
+```bash
+make up-wrenai
+```
+
+После старта:
+- UI доступен на `http://localhost:3000`
+- AI service доступен на `http://localhost:5555`
+- в Wren нужно подключать только `iceberg.mart`
+
+Для остановки WrenAI:
+
+```bash
+make down-wrenai
+```

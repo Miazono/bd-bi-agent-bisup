@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: up down restart load-raw load-bronze load-silver load-marts
+.PHONY: up down restart up-wrenai down-wrenai logs-wrenai load-raw load-bronze load-silver load-marts
 
 init-storage:
 	APP_ENV=local python -m scripts.init_storage
@@ -8,8 +8,17 @@ init-storage:
 up:
 	docker compose --env-file .env.docker up -d
 
+up-wrenai:
+	docker compose --env-file .env.docker --profile wrenai up -d wren-ui
+
 down:
 	docker compose down
+
+down-wrenai:
+	docker compose --env-file .env.docker --profile wrenai stop wren-ui wren-ai-service qdrant ibis-server wren-engine bootstrap
+
+logs-wrenai:
+	docker compose --env-file .env.docker --profile wrenai logs -f --tail=100 wren-ui wren-ai-service wren-engine ibis-server qdrant
 
 restart: down up
 

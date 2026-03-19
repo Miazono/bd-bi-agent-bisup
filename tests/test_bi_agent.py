@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 
 def test_wrenai_health():
-    endpoint = os.getenv("WREN_AI_ENDPOINT", "http://wrenai:3000").rstrip("/")
+    endpoint = os.getenv("WREN_AI_ENDPOINT", "http://wren-ui:3000").rstrip("/")
     url = f"{endpoint}/health"
 
     response = MagicMock()
@@ -19,7 +19,7 @@ def test_wrenai_health():
 
 
 def test_question_returns_sql():
-    endpoint = os.getenv("WREN_AI_ENDPOINT", "http://wrenai:3000").rstrip("/")
+    endpoint = os.getenv("WREN_AI_ENDPOINT", "http://wren-ui:3000").rstrip("/")
     url = f"{endpoint}/api/v1/query"
     payload = {"question": "Show revenue by sales channel for one day."}
 
