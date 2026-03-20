@@ -7,7 +7,6 @@ AGENTS.md
 .env.shared
 *.pyc
 .venv
-study/
 data/raw/
 infra/wrenai/data/*
 !infra/wrenai/data/.gitkeep
