@@ -1,51 +1,51 @@
 # AGENTS.md — ingestion
 
-## Purpose
-This directory contains ingestion scripts for the H&M dataset and related helpers.
+## Назначение
+В этом каталоге лежат скрипты загрузки для датасета H&M и связанные вспомогательные файлы.
 
-The target ingestion flow is:
+Целевой поток загрузки:
 `raw -> bronze -> silver`
 
-## Source of truth
-Before changing ingestion logic, read:
+## Источник истины
+Перед изменением логики загрузки прочитай:
 1. `ARCHITECTURE.md`
 2. `docs/data/schema.md`
-3. this file
+3. этот файл
 
-## Expected scripts
-- `load_raw.py` — load original source files into MinIO raw storage without business transformations
-- `load_bronze.py` — build technical Iceberg bronze tables close to source structure
-- `load_silver.py` — build cleaned analytical silver tables from bronze
+## Ожидаемые скрипты
+- `load_raw.py` — загружает исходные файлы в raw-хранилище MinIO без бизнес-трансформаций
+- `load_bronze.py` — строит технические bronze-таблицы, близкие к исходной структуре
+- `load_silver.py` — строит очищенные аналитические silver-таблицы на основе bronze
 
-Large reusable SQL blocks should live in `sql/queries/bronze/`, `sql/queries/silver/`, and `sql/queries/mart/`.
-Keep orchestration, chunk routing, and small operational checks in Python loaders, and prefer shared utilities from `ingestion/utils/` when logic repeats.
+Крупные переиспользуемые SQL-блоки должны жить в `sql/queries/bronze/`, `sql/queries/silver/` и `sql/queries/mart/`.
+Оркестрацию, маршрутизацию чанков и небольшие операционные проверки держи в Python-лоадерах, а при повторении логики предпочитай общие утилиты из `ingestion/utils/`.
 
-## Layer rules
+## Правила по слоям
 
 ### Raw
-- Preserve source files as-is.
-- Do not rename business fields in raw storage.
-- Store source metadata when practical: file name, load timestamp, checksum, batch id.
+- Сохраняй исходные файлы как есть.
+- Не переименовывай бизнес-поля в raw-хранилище.
+- По возможности сохраняй метаданные источника: имя файла, время загрузки, контрольную сумму и `batch_id`.
 
 ### Bronze
-- Bronze tables should stay close to the original source shape.
-- Allowed operations:
-  - type casting
-  - null normalization
-  - technical load columns
-  - basic DQ checks
-- Do not introduce business-heavy aggregations in bronze.
+- Bronze-таблицы должны оставаться близкими к исходной форме источника.
+- Допустимые операции:
+  - приведение типов
+  - нормализация пустых значений
+  - технические поля загрузки
+  - базовые проверки качества данных
+- Не добавляй в bronze тяжёлые бизнес-агрегации.
 
 ### Silver
-- Silver tables should represent cleaned analytical entities.
-- Allowed operations:
-  - standardization
-  - deduplication
-  - derived business flags
-  - analytical fact / dimension modeling
-- Silver should be built only from bronze or generated reference tables such as `dim_date`.
+- Silver-таблицы должны представлять очищенные аналитические сущности.
+- Допустимые операции:
+  - стандартизация
+  - дедупликация
+  - производные бизнес-флаги
+  - аналитическое моделирование фактов и измерений
+- Silver должен строиться только из bronze или из сгенерированных справочных таблиц вроде `dim_date`.
 
-## Planned tables
+## Запланированные таблицы
 
 ### Bronze
 - `bronze.hm_articles`
@@ -59,16 +59,16 @@ Keep orchestration, chunk routing, and small operational checks in Python loader
 - `silver.fact_sales_line`
 - `silver.fact_customer_article_stats`
 
-Do not create:
+Не создавать:
 - `silver.fact_customer_period_stats`
 
-## Quality rules
-- Keep table grain explicit in code comments or SQL.
-- Add or preserve technical metadata fields when relevant.
-- Avoid silently changing table names, grains, or partitioning rules without updating docs.
+## Правила качества
+- Держи grain таблицы явно указанным в комментариях к коду или SQL.
+- Добавляй или сохраняй технические поля метаданных, когда это уместно.
+- Не меняй незаметно имена таблиц, grain или правила партиционирования без обновления документации.
 
-## Update docs together
-If ingestion logic changes, also update:
+## Обновляй документацию вместе с кодом
+Если меняется логика загрузки, также обновляй:
 - `ARCHITECTURE.md`
 - `docs/data/schema.md`
-- `docs/data/lineage.md` if lineage changes
+- `docs/data/lineage.md`, если меняется происхождение данных

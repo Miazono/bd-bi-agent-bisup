@@ -1,134 +1,172 @@
-# Data schema
+# Схема данных
 
-## Dataset overview
+## Как читать этот документ
 
-Проект использует H&M Fashion Recommendations dataset.
+Этот документ описывает логические слои данных и ключевые характеристики таблиц:
 
-Основные входные источники:
-- `articles.csv` — товарный справочник;
-- `customers.csv` — клиентский справочник;
-- `transactions_train.csv` — исторические транзакции.
+- источник данных;
+- grain;
+- ключевые поля;
+- назначение;
+- правила обновления.
 
-## Raw layer
+Полный перечень столбцов и типов находится в `docs/data/catalog_generated.md`.
 
-### `raw.hm_articles_csv`
-- **Source:** `articles.csv`
-- **Grain:** 1 строка = 1 строка исходного файла
-- **Format:** CSV
-- **Purpose:** сохранить оригинальный товарный справочник без изменений
-- **Key business fields:** `article_id`, `product_code`, `prod_name`, `product_type_name`, `product_group_name`, `department_name`, `index_name`, `section_name`, `garment_group_name`
+## Исходные файлы
 
-### `raw.hm_customers_csv`
-- **Source:** `customers.csv`
-- **Grain:** 1 строка = 1 строка исходного файла
-- **Format:** CSV
-- **Purpose:** сохранить оригинальный клиентский справочник без изменений
-- **Key business fields:** `customer_id`, `fn`, `active`, `club_member_status`, `fashion_news_frequency`, `age`, `postal_code`
+Проект использует три исходных CSV-файла датасета H&M:
 
-### `raw.hm_transactions_csv`
-- **Source:** `transactions_train.csv`
-- **Grain:** 1 строка = 1 строка исходного файла
-- **Format:** CSV
-- **Purpose:** сохранить оригинальные транзакции без изменений
-- **Key business fields:** `t_dat`, `customer_id`, `article_id`, `price`, `sales_channel_id`
+- `articles.csv` — справочник товаров;
+- `customers.csv` — справочник клиентов;
+- `transactions_train.csv` — исторические транзакции продаж.
 
-## Bronze layer
+## Raw
 
-### `bronze.hm_articles`
-- **Source:** `raw.hm_articles_csv`
-- **Grain:** 1 строка = 1 article record из исходного файла
-- **Primary business key:** `article_id`
-- **Technical fields:** `ingest_ts`, `source_file_name`, `batch_id`
-- **Partitioning:** none
-- **Purpose:** технически нормализованный товарный справочник для lakehouse
+### Хранение файлов
 
-### `bronze.hm_customers`
-- **Source:** `raw.hm_customers_csv`
-- **Grain:** 1 строка = 1 customer record из исходного файла
-- **Primary business key:** `customer_id`
-- **Technical fields:** `ingest_ts`, `source_file_name`, `batch_id`
-- **Partitioning:** none
-- **Purpose:** технически нормализованный клиентский справочник для lakehouse
+Слой `raw` хранится в MinIO как исходные CSV-файлы без бизнес-преобразований:
 
-### `bronze.hm_transactions`
-- **Source:** `raw.hm_transactions_csv`
-- **Grain:** 1 строка = 1 transaction line из исходного файла
-- **Primary business grain:** `t_dat + customer_id + article_id + sales_channel_id`
-- **Technical fields:** `ingest_ts`, `source_file_name`, `batch_id`
-- **Partitioning:** `month(t_dat)`
-- **Purpose:** технически нормализованный транзакционный факт
+- `s3a://lakehouse/raw/hm/articles/load_date=YYYY-MM-DD/articles.csv`;
+- `s3a://lakehouse/raw/hm/customers/load_date=YYYY-MM-DD/customers.csv`;
+- `s3a://lakehouse/raw/hm/transactions_train/load_date=YYYY-MM-DD/transactions_train.csv`.
 
-#### Planned typed fields for `bronze.hm_transactions`
-- `t_dat` → `date`
-- `customer_id` → `varchar`
-- `article_id` → `bigint`
-- `price` → `decimal(12,4)`
-- `sales_channel_id` → `integer`
+### Временные внешние таблицы
 
-## Silver layer
+Для загрузки в bronze создаются временные внешние таблицы в каталоге `hive` и схеме `raw`.
 
-### `silver.dim_article`
-- **Source:** `bronze.hm_articles`
-- **Grain:** 1 строка = 1 `article_id`
-- **Primary key:** `article_id`
-- **Purpose:** основной товарный справочник для аналитики и JOIN-ов
-- **Typical derived fields:** `is_ladieswear`, `is_menswear`, `is_kids`, `color_family`
+#### `hive.raw.hm_articles_raw`
 
-### `silver.dim_customer`
-- **Source:** `bronze.hm_customers`
-- **Grain:** 1 строка = 1 `customer_id`
-- **Primary key:** `customer_id`
-- **Purpose:** клиентский справочник и сегментация
-- **Typical derived fields:** `age_band`, `is_active_customer`, `is_fn_flag_present`
+- Источник: директория `raw/hm/articles/load_date=.../`
+- Grain: 1 строка = 1 строка исходного файла
+- Формат: CSV
+- Назначение: техническое чтение файла `articles.csv` перед загрузкой в bronze
 
-### `silver.dim_date`
-- **Source:** generated calendar table
-- **Grain:** 1 строка = 1 календарная дата
-- **Primary key:** `date_day`
-- **Purpose:** календарное измерение для time analytics
+#### `hive.raw.hm_customers_raw`
 
-### `silver.fact_sales_line`
-- **Source:** `bronze.hm_transactions`
-- **Grain:** 1 строка = 1 purchase line
-- **Keys:** `sale_date`, `customer_id`, `article_id`
-- **Partitioning:** `month(sale_date)`
-- **Purpose:** главный факт продаж для построения витрин
+- Источник: директория `raw/hm/customers/load_date=.../`
+- Grain: 1 строка = 1 строка исходного файла
+- Формат: CSV
+- Назначение: техническое чтение файла `customers.csv` перед загрузкой в bronze
 
-### `silver.fact_customer_article_stats`
-- **Source:** aggregate from `silver.fact_sales_line`
-- **Grain:** 1 строка = `customer_id + article_id`
-- **Purpose:** агрегат по повторным покупкам и customer-product behavior
-- **Main fields:** `first_purchase_date`, `last_purchase_date`, `purchase_cnt`, `total_revenue`, `avg_price`
-- **Update strategy:** для нового `batch_id` обновляется через batch-level `MERGE`; при повторной загрузке уже существующего `batch_id` используется safe rebuild только для затронутых `customer_id + article_id`
+#### `hive.raw.hm_transactions_raw`
 
-## Mart layer
+- Источник: директория `raw/hm/transactions_train/load_date=.../`
+- Grain: 1 строка = 1 строка исходного файла
+- Формат: CSV
+- Назначение: техническое чтение файла `transactions_train.csv` перед загрузкой в bronze
 
-### `mart.sales_daily_channel`
-- **Grain:** 1 строка = `sale_date + sales_channel_id`
-- **Source:** `silver.fact_sales_line`
-- **Partitioning:** `month(sale_date)`
-- **Purpose:** дневные продажи по каналу
+## Bronze
 
-### `mart.sales_monthly_category`
-- **Grain:** 1 строка = `sale_month + category`
-- **Source:** `silver.fact_sales_line`, `silver.dim_article`
-- **Partitioning:** `month(sale_month)`
-- **Purpose:** месячные продажи по товарным категориям
+### `iceberg.bronze.hm_articles`
 
-### `mart.customer_segment_monthly`
-- **Grain:** 1 строка = `sale_month + customer_segment`
-- **Source:** `silver.fact_sales_line`, `silver.dim_customer`
-- **Partitioning:** `month(sale_month)`
-- **Purpose:** месячная аналитика по клиентским сегментам
+- Источник: `hive.raw.hm_articles_raw`
+- Grain: 1 строка = 1 товарная запись
+- Бизнес-ключ: `article_id`
+- Технические поля: `ingest_ts`, `source_file_name`, `batch_id`
+- Партиционирование: не задано
+- Назначение: технически нормализованный справочник товаров, максимально близкий к источнику
 
-### `mart.repeat_purchase_category`
-- **Grain:** 1 строка = `category`
-- **Source:** `silver.fact_customer_article_stats`, `silver.dim_article`
-- **Partitioning:** none
-- **Purpose:** аналитика повторных покупок по категориям
+### `iceberg.bronze.hm_customers`
 
-### `mart.customer_rfm_monthly`
-- **Grain:** 1 строка = `customer_id + snapshot_month`
-- **Source:** `silver.fact_sales_line`, `silver.dim_customer`
-- **Partitioning:** `month(snapshot_month)`
-- **Purpose:** RFM-профиль клиента на конец месяца
+- Источник: `hive.raw.hm_customers_raw`
+- Grain: 1 строка = 1 клиентская запись
+- Бизнес-ключ: `customer_id`
+- Технические поля: `ingest_ts`, `source_file_name`, `batch_id`
+- Партиционирование: не задано
+- Назначение: технически нормализованный справочник клиентов, максимально близкий к источнику
+
+### `iceberg.bronze.hm_transactions`
+
+- Источник: `hive.raw.hm_transactions_raw`
+- Grain: 1 строка = 1 строка покупки
+- Бизнес-grain: `t_dat + customer_id + article_id + sales_channel_id`
+- Технические поля: `ingest_ts`, `source_file_name`, `batch_id`
+- Партиционирование: `month(t_dat)`
+- Назначение: технически нормализованный факт транзакций
+
+## Silver
+
+### `iceberg.silver.dim_article`
+
+- Источник: `iceberg.bronze.hm_articles`
+- Grain: 1 строка = 1 `article_id`
+- Первичный ключ: `article_id`
+- Производные поля: `is_ladieswear`, `is_menswear`, `is_kids`, `color_family`
+- Назначение: основной товарный справочник для аналитики и соединений
+
+### `iceberg.silver.dim_customer`
+
+- Источник: `iceberg.bronze.hm_customers`
+- Grain: 1 строка = 1 `customer_id`
+- Первичный ключ: `customer_id`
+- Производные поля: `age_band`, `is_active_customer`, `is_fn_flag_present`
+- Назначение: основной клиентский справочник для аналитики
+
+### `iceberg.silver.dim_date`
+
+- Источник: календарь, генерируемый из данных bronze
+- Grain: 1 строка = 1 календарная дата
+- Первичный ключ: `date_day`
+- Назначение: календарное измерение для аналитики по времени
+
+### `iceberg.silver.fact_sales_line`
+
+- Источник: `iceberg.bronze.hm_transactions`
+- Grain: 1 строка = 1 строка покупки
+- Ключевые поля: `sale_date`, `customer_id`, `article_id`, `sales_channel_id`
+- Партиционирование: `month(sale_date)`
+- Назначение: основной факт продаж для построения витрин
+- Стратегия обновления: пересборка только затронутых месячных частей для выбранного `batch_id`
+
+### `iceberg.silver.fact_customer_article_stats`
+
+- Источник: агрегат поверх `iceberg.silver.fact_sales_line`
+- Grain: 1 строка = `customer_id + article_id`
+- Основные поля: `first_purchase_date`, `last_purchase_date`, `purchase_cnt`, `total_revenue`, `avg_price`
+- Назначение: производный агрегат для анализа повторных покупок
+- Стратегия обновления:
+  - новый `batch_id` обновляется через `MERGE`;
+  - повторная загрузка уже существующего `batch_id` использует безопасную частичную пересборку по префиксам `customer_id`
+
+## Marts
+
+Логический слой называется `marts`, а физически витрины лежат в схеме `iceberg.mart`.
+
+### `iceberg.mart.sales_daily_channel`
+
+- Источник: `iceberg.silver.fact_sales_line`
+- Grain: 1 строка = `sale_date + sales_channel_id`
+- Партиционирование: `month(sale_date)`
+- Назначение: дневные продажи по каналу продаж
+
+### `iceberg.mart.sales_monthly_category`
+
+- Источник: `iceberg.silver.fact_sales_line`, `iceberg.silver.dim_article`
+- Grain: 1 строка = `sale_month + category`
+- Партиционирование: `month(sale_month)`
+- Назначение: месячные продажи по товарным категориям
+- Примечание: `category` заполняется из `product_group_name`
+
+### `iceberg.mart.customer_segment_monthly`
+
+- Источник: `iceberg.silver.fact_sales_line`, `iceberg.silver.dim_customer`
+- Grain: 1 строка = `sale_month + customer_segment`
+- Партиционирование: `month(sale_month)`
+- Назначение: месячная аналитика по клиентским сегментам
+- Примечание: текущий `customer_segment` строится как `COALESCE(club_member_status, 'unknown')`
+
+### `iceberg.mart.repeat_purchase_category`
+
+- Источник: `iceberg.silver.fact_customer_article_stats`, `iceberg.silver.dim_article`
+- Grain: 1 строка = `category`
+- Партиционирование: не задано
+- Назначение: аналитика повторных покупок по товарным категориям
+- Примечание: в витрину попадают только пары с `purchase_cnt > 1`
+
+### `iceberg.mart.customer_rfm_monthly`
+
+- Источник: `iceberg.silver.fact_sales_line`
+- Grain: 1 строка = `customer_id + snapshot_month`
+- Партиционирование: `month(snapshot_month)`
+- Назначение: RFM-профиль клиента на конец месяца
+- Примечание: `snapshot_month` — последний календарный день месяца, для которого в данных есть продажи

@@ -1,51 +1,51 @@
 # AGENTS.md — sql/ddl
 
-## Purpose
-This directory contains SQL definitions for physical lakehouse tables.
+## Назначение
+В этом каталоге лежат SQL-определения физических lakehouse-таблиц.
 
-Scope of this directory:
-- table creation SQL
-- CTAS / DDL-like table build statements
-- physical schema definitions for bronze, silver, and mart layers
+Область каталога:
+- SQL для создания таблиц
+- CTAS / DDL-подобные выражения построения таблиц
+- физические определения схем для слоёв bronze, silver и mart
 
-This directory is not the primary place for BI-facing marts.
+Этот каталог не является основным местом для BI-ориентированных витрин.
 
-## Source of truth
-Before editing files in this directory, read:
+## Источник истины
+Перед редактированием файлов в этом каталоге прочитай:
 1. `ARCHITECTURE.md`
 2. `docs/data/schema.md`
-3. the closest `AGENTS.md`
-4. this file
+3. ближайший `AGENTS.md`
+4. этот файл
 
-## Directory intent
-- `bronze/` — DDL or CTAS definitions for bronze tables
-- `silver/` — DDL or CTAS definitions for silver tables
-- `mart/` — DDL definitions for physical BI-facing mart tables
+## Назначение подкаталогов
+- `bronze/` — DDL или CTAS-определения для bronze-таблиц
+- `silver/` — DDL или CTAS-определения для silver-таблиц
+- `mart/` — DDL-определения физических BI-ориентированных mart-таблиц
 
-## Rules
-- Keep one table definition per file when practical.
-- File names should clearly map to table names.
-- Prefer stable, explicit column names and types.
-- Keep table grain explicit in comments or file headers.
-- Keep physical modeling concerns here; keep BI-facing aggregation logic out of this directory.
+## Правила
+- По возможности держи одно определение таблицы в одном файле.
+- Имена файлов должны явно соответствовать именам таблиц.
+- Предпочитай стабильные и явные имена столбцов и типы.
+- Держи grain таблицы явно указанным в комментариях или заголовках файлов.
+- Оставляй здесь вопросы физического моделирования; логику агрегации для BI выноси из этого каталога.
 
-## Layer rules
+## Правила по слоям
 
 ### Bronze
-- Stay close to source structure.
-- Allow type normalization and technical metadata fields.
-- Avoid business-heavy transformations.
+- Оставайся близко к структуре источника.
+- Разрешай нормализацию типов и технические поля метаданных.
+- Избегай тяжёлых бизнес-трансформаций.
 
 ### Silver
-- Represent cleaned analytical entities.
-- Allow deduplication, standardization, derived business flags, and fact/dimension modeling.
-- Keep silver reusable across multiple marts when possible.
+- Представляй очищенные аналитические сущности.
+- Разрешай дедупликацию, стандартизацию, производные бизнес-флаги и моделирование фактов и измерений.
+- По возможности делай silver переиспользуемым в нескольких marts.
 
 ### Mart
-- Store BI-facing physical Iceberg tables built from silver.
-- Keep only table definitions here; transformation `SELECT` logic belongs in `sql/queries/`.
+- Храни здесь физические Iceberg-таблицы, ориентированные на BI, построенные из silver.
+- Оставляй здесь только определения таблиц; логика преобразований `SELECT` должна жить в `sql/queries/`.
 
-## Current planned tables
+## Текущие запланированные таблицы
 
 ### Bronze
 - `bronze.hm_articles`
@@ -66,8 +66,8 @@ Before editing files in this directory, read:
 - `mart.repeat_purchase_category`
 - `mart.customer_rfm_monthly`
 
-## Update docs together
-If a table name, grain, partitioning rule, or physical schema changes, also update:
+## Обновляй документацию вместе с кодом
+Если меняются имя таблицы, grain, правило партиционирования или физическая схема, также обновляй:
 - `docs/data/schema.md`
-- `docs/data/lineage.md` if lineage changes
-- `ARCHITECTURE.md` if architectural intent changes
+- `docs/data/lineage.md`, если меняется происхождение данных
+- `ARCHITECTURE.md`, если меняется архитектурный замысел

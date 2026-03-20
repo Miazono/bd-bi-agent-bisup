@@ -1,143 +1,182 @@
-# Analytical marts
+# Аналитические витрины
 
-## Purpose
+## Назначение
 
-Mart-слой предназначен для:
-- стабильной бизнес-аналитики поверх silver-таблиц;
+Слой `marts` предназначен для:
+
+- стабильной бизнес-аналитики поверх `silver`;
 - упрощения SQL для Trino;
 - публикации понятных сущностей и метрик для BI-агента.
 
-Primary semantic exposure для BI-agent планируется строить именно на marts.
+Физически витрины материализуются как Iceberg-таблицы в схеме `iceberg.mart`.
+В текущей реализации каждая витрина пересобирается полностью из `silver`.
 
-В текущей реализации marts материализуются как физические Iceberg-таблицы в схеме `mart`.
-Обновление выполняется через полный rebuild из silver-слоя.
-DDL mart-таблиц хранится в `sql/ddl/mart/`, а SQL-логика наполнения — в `sql/queries/mart/`.
-Для единообразия query-файлы mart теперь тоже содержат полноценные исполняемые `INSERT INTO ... SELECT ...`, а не только `SELECT`.
+## Общие правила слоя marts
 
----
+- одна витрина должна отвечать на понятный бизнес-вопрос;
+- grain витрины должен быть явно зафиксирован;
+- витрины строятся из таблиц `silver`, а не напрямую из `bronze`;
+- имена метрик должны быть понятны и человеку, и BI-агенту.
 
-## `mart.sales_daily_channel`
+## `iceberg.mart.sales_daily_channel`
 
-### Purpose
+### Назначение
+
 Показывает дневные продажи по каналам продаж.
 
 ### Grain
+
 1 строка = `sale_date + sales_channel_id`
 
-### Sources
-- `silver.fact_sales_line`
+### Источники
 
-### Metrics
-- `revenue`
-- `items_sold`
-- `buyers_cnt`
-- `avg_item_price`
+- `iceberg.silver.fact_sales_line`
 
-### Notes
-`items_sold` в v1 интерпретируется как количество transaction lines, а не как количество единиц в заказе.
+### Метрики
 
-### Example BI questions
-- Show daily revenue by sales channel for the last 60 days
-- Which sales channel had more buyers last month?
-- How did average item price change by channel?
+- `revenue` — сумма `price`;
+- `items_sold` — количество строк покупок;
+- `buyers_cnt` — число уникальных покупателей;
+- `avg_item_price` — средняя цена строки покупки.
 
----
+### Примечания
 
-## `mart.sales_monthly_category`
+`items_sold` в текущей версии означает количество строк покупок, а не количество единиц товара в корзине.
 
-### Purpose
-Показывает динамику продаж по товарным категориям по месяцам.
+### Примеры вопросов
+
+- Покажи выручку по каналам продаж за последние 60 дней.
+- В каком канале было больше покупателей в прошлом месяце?
+- Как менялась средняя цена покупки по каналам?
+
+## `iceberg.mart.sales_monthly_category`
+
+### Назначение
+
+Показывает месячную динамику продаж по товарным категориям.
 
 ### Grain
+
 1 строка = `sale_month + category`
 
-### Sources
-- `silver.fact_sales_line`
-- `silver.dim_article`
+### Источники
 
-### Metrics
-- `revenue`
-- `items_sold`
-- `buyers_cnt`
-- `active_sku_cnt`
+- `iceberg.silver.fact_sales_line`
+- `iceberg.silver.dim_article`
 
-### Example BI questions
-- Top product groups by revenue in September
-- Which garment groups grew month over month?
-- Show monthly revenue by index group
+### Метрики
 
----
+- `revenue`;
+- `items_sold`;
+- `buyers_cnt`;
+- `active_sku_cnt`.
 
-## `mart.customer_segment_monthly`
+### Примечания
 
-### Purpose
-Показывает ценность клиентских сегментов по месяцам.
+Поле `category` в текущей реализации равно `product_group_name`.
+
+### Примеры вопросов
+
+- Какие товарные категории дали наибольшую выручку в сентябре?
+- Как менялись продажи по категориям от месяца к месяцу?
+- Сколько уникальных артикулов продавалось в каждой категории?
+
+## `iceberg.mart.customer_segment_monthly`
+
+### Назначение
+
+Показывает месячную аналитику по клиентским сегментам.
 
 ### Grain
+
 1 строка = `sale_month + customer_segment`
 
-### Sources
-- `silver.fact_sales_line`
-- `silver.dim_customer`
+### Источники
 
-### Metrics
-- `revenue`
-- `buyers_cnt`
-- `purchase_lines_cnt`
-- `revenue_per_buyer`
-- `avg_item_price`
+- `iceberg.silver.fact_sales_line`
+- `iceberg.silver.dim_customer`
 
-### Example BI questions
-- Do club members spend more than non-members?
-- Revenue per buyer by age band
-- Which fashion-news segment buys most often?
+### Метрики
 
----
+- `revenue`;
+- `buyers_cnt`;
+- `purchase_lines_cnt`;
+- `revenue_per_buyer`;
+- `avg_item_price`.
 
-## `mart.repeat_purchase_category`
+### Примечания
 
-### Purpose
+В текущей версии `customer_segment` строится как `COALESCE(club_member_status, 'unknown')`.
+Это значит, что витрина отражает именно статус участия в клубе, а не более сложную клиентскую сегментацию.
+
+### Примеры вопросов
+
+- Какие клиентские сегменты приносят больше выручки по месяцам?
+- Сколько покупателей было в каждом сегменте в прошлом месяце?
+- Как меняется выручка на одного покупателя по сегментам?
+
+## `iceberg.mart.repeat_purchase_category`
+
+### Назначение
+
 Показывает повторные покупки по товарным категориям.
 
 ### Grain
+
 1 строка = `category`
 
-### Sources
-- `silver.fact_customer_article_stats`
-- `silver.dim_article`
+### Источники
 
-### Metrics
-- `repeat_pairs_cnt`
-- `repeat_customers_cnt`
-- `avg_purchase_cnt`
-- `repeat_revenue`
+- `iceberg.silver.fact_customer_article_stats`
+- `iceberg.silver.dim_article`
 
-### Example BI questions
-- Which garment groups have the highest repeat purchase rate?
-- Show product groups with the strongest repeat behavior
-- What categories are most re-purchased by the same customers?
+### Метрики
 
----
+- `repeat_pairs_cnt`;
+- `repeat_customers_cnt`;
+- `avg_purchase_cnt`;
+- `repeat_revenue`.
 
-## `mart.customer_rfm_monthly`
+### Примечания
 
-### Purpose
+В витрину попадают только пары `customer_id + article_id`, у которых `purchase_cnt > 1`.
+Поле `category` заполняется из `product_group_name`.
+
+### Примеры вопросов
+
+- В каких категориях чаще всего происходят повторные покупки?
+- Какие категории дают наибольшую выручку от повторных покупок?
+- Где у клиентов самая высокая средняя частота повторной покупки?
+
+## `iceberg.mart.customer_rfm_monthly`
+
+### Назначение
+
 Показывает RFM-профиль клиентов по месяцам.
 
 ### Grain
+
 1 строка = `customer_id + snapshot_month`
 
-### Sources
-- `silver.fact_sales_line`
-- `silver.dim_customer`
+### Источники
 
-### Metrics
-- `recency_days`
-- `frequency_365d`
-- `monetary_365d`
-- `rfm_segment`
+- `iceberg.silver.fact_sales_line`
 
-### Example BI questions
-- How many champions do we have by month?
-- Which age bands contain the most at-risk customers?
-- Show revenue share by RFM segment
+### Метрики
+
+- `recency_days`;
+- `frequency_365d`;
+- `monetary_365d`;
+- `rfm_segment`.
+
+### Примечания
+
+- `snapshot_month` — последний календарный день месяца, для которого в данных есть продажи.
+- Окно расчёта `frequency_365d` и `monetary_365d` — последние 365 дней до даты снимка включительно.
+- В текущей версии используются сегменты `Champions`, `Loyal`, `At Risk`, `Lost`.
+
+### Примеры вопросов
+
+- Сколько клиентов находится в сегменте `Champions` по месяцам?
+- Какой вклад в выручку дают разные RFM-сегменты?
+- В каких месяцах росло число клиентов `At Risk`?

@@ -1,116 +1,185 @@
-# ARCHITECTURE
+# Архитектура проекта
 
-## Purpose
+## Назначение
 
-Проект представляет собой локальный учебный Data Lakehouse со слоем BI-ассистента.
-Цель — пройти полный путь от загрузки сырых данных до аналитических витрин и natural-language доступа к ним через SQL AI agent.
+Проект представляет собой локальный учебный Data Lakehouse со слоем BI-агента.
+Его задача — пройти полный путь от хранения исходных файлов до аналитических витрин и SQL-доступа к ним через Trino и WrenAI.
 
-## Target stack
+## Технологический стек
 
-- MinIO — объектное хранилище для raw-файлов и файлов Iceberg-таблиц.
-- Hive Metastore — каталог таблиц Iceberg.
-- Trino — SQL-движок для работы с Iceberg-таблицами и витринами.
-- WrenAI (или аналог) — BI-агент, который генерирует SQL к Trino.
-- Python — ingestion и вспомогательные скрипты.
+- MinIO — объектное хранилище для исходных файлов и данных Iceberg;
+- PostgreSQL — база метаданных Hive Metastore;
+- Hive Metastore — каталог таблиц Iceberg;
+- Trino — SQL-движок для доступа к слоям `bronze`, `silver` и `mart`;
+- WrenAI — внешний слой BI-агента, который подключается к Trino;
+- Python — загрузочные скрипты и служебные утилиты.
 
-## Dataset
+## Локальные среды
 
-В качестве основного набора данных используется H&M Fashion Recommendations dataset.
+В проекте используются два набора переменных окружения:
 
-В scope v1 входят только табличные данные:
-- `articles.csv`
-- `customers.csv`
-- `transactions_train.csv`
+- `.env.local` — для локального запуска Python-скриптов с доступом к сервисам через `localhost`;
+- `.env.docker` — для запуска контейнеров внутри docker-сети с адресацией по именам сервисов.
 
-## Data flow
+Файл `config/settings.py` выбирает нужный набор через переменную `APP_ENV`.
 
-### 1. Raw layer
-Исходные файлы загружаются в MinIO без бизнес-трансформаций.
+## Сервисная архитектура
 
-Назначение raw-слоя:
-- сохранить оригинальные данные;
-- обеспечить воспроизводимость загрузки;
-- отделить landing zone от аналитической модели.
+### MinIO
 
-Пример логической структуры хранения:
-- `s3://lakehouse/raw/hm/articles/load_date=YYYY-MM-DD/articles.csv`
-- `s3://lakehouse/raw/hm/customers/load_date=YYYY-MM-DD/customers.csv`
-- `s3://lakehouse/raw/hm/transactions_train/load_date=YYYY-MM-DD/transactions_train.csv`
+MinIO хранит:
 
-### 2. Bronze layer
-Bronze — это технически нормализованные Iceberg-таблицы, максимально близкие к источнику.
+- исходные CSV-файлы слоя `raw`;
+- данные Iceberg-таблиц слоёв `bronze`, `silver` и `mart`.
 
-Планируемые таблицы:
-- `bronze.hm_articles`
-- `bronze.hm_customers`
-- `bronze.hm_transactions`
+По умолчанию используется бакет `lakehouse`.
 
-На этом слое допускаются:
+### Hive Metastore
+
+Hive Metastore хранит метаданные Iceberg-таблиц и использует PostgreSQL как внутреннюю базу метаданных.
+
+### Trino
+
+Trino подключён к двум каталогам:
+
+- `hive` — для временных внешних таблиц над raw-файлами;
+- `iceberg` — для физических таблиц `bronze`, `silver` и `mart`.
+
+### WrenAI
+
+WrenAI вынесен в отдельный compose-профиль `wrenai`.
+Он не нужен для загрузки данных, но используется как слой BI-агента поверх Trino.
+
+## Логическая и физическая модель данных
+
+### 1. Raw
+
+Логический слой `raw` хранится как файлы в MinIO:
+
+- `s3a://lakehouse/raw/hm/articles/load_date=YYYY-MM-DD/articles.csv`;
+- `s3a://lakehouse/raw/hm/customers/load_date=YYYY-MM-DD/customers.csv`;
+- `s3a://lakehouse/raw/hm/transactions_train/load_date=YYYY-MM-DD/transactions_train.csv`.
+
+Во время загрузки в bronze скрипт `ingestion/load_bronze.py` создаёт временные внешние таблицы:
+
+- `hive.raw.hm_articles_raw`;
+- `hive.raw.hm_customers_raw`;
+- `hive.raw.hm_transactions_raw`.
+
+Эти таблицы служат техническим мостом между файлами `raw` и физическими таблицами Iceberg.
+
+### 2. Bronze
+
+Слой `bronze` представлен физическими Iceberg-таблицами:
+
+- `iceberg.bronze.hm_articles`;
+- `iceberg.bronze.hm_customers`;
+- `iceberg.bronze.hm_transactions`.
+
+На этом слое выполняются:
+
 - приведение типов;
-- добавление технических полей загрузки;
 - нормализация пустых значений;
-- базовые DQ-проверки.
+- добавление технических полей `ingest_ts`, `source_file_name`, `batch_id`.
 
-### 3. Silver layer
-Silver — это очищенная аналитическая модель, пригодная для JOIN, сегментации и расчёта витрин.
+### 3. Silver
 
-Планируемые таблицы:
-- `silver.dim_article`
-- `silver.dim_customer`
-- `silver.dim_date`
-- `silver.fact_sales_line`
-- `silver.fact_customer_article_stats`
+Слой `silver` содержит очищенную аналитическую модель:
 
-Ожидаемая operational-логика для Silver:
-- `silver.fact_sales_line` может обновляться chunk-ами, согласованными с физическим partitioning;
-- производные silver-агрегаты должны по возможности обновляться инкрементально по новому batch, а не через полный rebuild;
-- безопасный rebuild допустим как fallback для повторной загрузки уже существующего batch.
+- `iceberg.silver.dim_article`;
+- `iceberg.silver.dim_customer`;
+- `iceberg.silver.dim_date`;
+- `iceberg.silver.fact_sales_line`;
+- `iceberg.silver.fact_customer_article_stats`.
 
-### 4. Marts layer
-Marts — это готовые аналитические витрины для Trino и BI-агента.
+Особенности текущей реализации:
 
-Планируемые витрины:
-- `mart.sales_daily_channel`
-- `mart.sales_monthly_category`
-- `mart.customer_segment_monthly`
-- `mart.repeat_purchase_category`
-- `mart.customer_rfm_monthly`
+- `fact_sales_line` обновляется по месячным частям на основе значений `t_dat` в bronze;
+- `fact_customer_article_stats` для нового `batch_id` обновляется через `MERGE`;
+- при повторной загрузке уже существующего `batch_id` используется безопасная частичная пересборка по префиксам `customer_id`.
 
-Назначение mart-слоя:
-- упростить работу BI-агента;
-- зафиксировать конечные метрики;
-- дать стабильный слой для демо и evaluation.
+### 4. Marts
 
-Operational-подход для marts:
-- marts материализуются как физические Iceberg-таблицы в схеме `mart`;
-- в текущей версии обновление mart-слоя выполняется через полный rebuild из silver;
-- mart-слой должен быть BI-friendly и семантически стабильным для SQL AI агента.
+Логический слой называется `marts`, а физически витрины материализуются в схеме `iceberg.mart`:
 
-### 5. BI agent
-BI-агент подключается к Trino и использует semantic layer из `bi-agent/semantic_layer/`.
-Пользователь задаёт вопрос на естественном языке.
-Агент:
-1. сопоставляет вопрос с описанными сущностями и метриками;
-2. генерирует SQL;
-3. выполняет SQL через Trino;
-4. возвращает ответ пользователю.
+- `sales_daily_channel`;
+- `sales_monthly_category`;
+- `customer_segment_monthly`;
+- `repeat_purchase_category`;
+- `customer_rfm_monthly`.
 
-### 6. Evaluation
-Качество BI-агента проверяется на тестовом наборе вопросов в `bi-agent/eval/`.
-При необходимости используется LLM-as-a-Judge для сравнения ответа агента с эталоном.
+В текущей версии слой `marts` пересобирается полностью из `silver`.
 
-## Architectural principles
+### 5. BI-агент
 
-- Документация описывает целевую архитектуру, даже если часть сервисов пока не реализована.
-- Raw, Bronze, Silver и Marts — логически разные слои.
-- Основной факт проекта — продажи на уровне purchase line.
-- Главные измерения — товар, клиент и дата.
-- Iceberg используется как табличный формат lakehouse.
-- Trino используется как основной SQL backend для витрин и BI-агента.
-- `docs/data/catalog_generated.md` является производной документацией и не редактируется вручную.
+BI-агент работает поверх Trino и должен использовать витрины как основной слой семантической публикации.
+В репозитории уже выделены каталоги для:
 
+- семантического слоя;
+- промптов;
+- оценки качества.
 
-## Current implementation status
+При этом сами артефакты BI-агента пока заполнены частично и описываются как развиваемая часть проекта, а не как завершённая функциональность.
 
-На текущем этапе репозиторий описывает структуру и целевые артефакты проекта.
-Допускается, что часть файлов пока являются заготовками и будут реализованы позже через Codex.
+## Поток обработки
+
+### Подготовка хранилища
+
+Скрипт `scripts/init_storage.py` создаёт бакет и служебные префиксы:
+
+- `raw/`;
+- `bronze/`;
+- `silver/`;
+- `marts/`.
+
+### Загрузка raw
+
+`ingestion/load_raw.py`:
+
+- проверяет наличие бакета;
+- вычисляет MD5 для каждого файла;
+- пропускает повторную загрузку, если содержимое не изменилось;
+- сохраняет файл в префикс соответствующего источника и `load_date`.
+
+### Загрузка bronze
+
+`ingestion/load_bronze.py`:
+
+- валидирует наличие raw-файлов для выбранного `load_date`;
+- создаёт внешние таблицы `hive.raw.*`;
+- применяет DDL для `iceberg.bronze.*`;
+- удаляет старые строки для того же `batch_id`;
+- загружает новый batch в bronze.
+
+### Загрузка silver
+
+`ingestion/load_silver.py`:
+
+- проверяет, что batch существует в bronze;
+- гарантирует существование схемы и таблиц `silver`;
+- обновляет измерения и календарь;
+- пересобирает `fact_sales_line` по месячным частям;
+- обновляет производный агрегат `fact_customer_article_stats`.
+
+### Загрузка marts
+
+`ingestion/load_marts.py`:
+
+- гарантирует существование схемы `iceberg.mart`;
+- применяет DDL витрин;
+- очищает и заново наполняет каждую витрину SQL-запросом из `sql/queries/mart/`.
+
+## Архитектурные принципы
+
+- Код и DDL являются главным источником истины для фактической реализации.
+- Логические слои называются `raw`, `bronze`, `silver`, `marts`.
+- Схема `mart` — это физическое место хранения витрин.
+- Слой `raw` хранит файлы, а не управляемые Iceberg-таблицы.
+- Временные таблицы `hive.raw.*` создаются на этапе загрузки bronze и не считаются самостоятельным аналитическим слоем.
+- Основной слой публикации для BI-агента — витрины `marts`.
+- `docs/data/catalog_generated.md` является производным артефактом и должен обновляться скриптом `scripts/gen_schema.py`.
+
+## Текущее состояние
+
+На текущем этапе реализованы инфраструктура, загрузочные скрипты и физические аналитические витрины.
+Слой BI-агента и связанные с ним описательные артефакты находятся в стадии поэтапного наполнения и настройки.

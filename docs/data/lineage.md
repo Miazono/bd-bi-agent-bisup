@@ -1,66 +1,69 @@
-# Data lineage
+# Происхождение данных
 
-## Purpose
+## Назначение
 
 Этот документ показывает происхождение данных и зависимость таблиц между слоями.
 
-## Source files
+## Исходные файлы
 
 - `articles.csv`
 - `customers.csv`
 - `transactions_train.csv`
 
-## Layer-by-layer lineage
+## Поток по слоям
 
-### Articles flow
+### Поток товаров
 
 `articles.csv`
-→ `raw.hm_articles_csv`
-→ `bronze.hm_articles`
-→ `silver.dim_article`
+→ `s3a://lakehouse/raw/hm/articles/load_date=YYYY-MM-DD/articles.csv`
+→ `hive.raw.hm_articles_raw`
+→ `iceberg.bronze.hm_articles`
+→ `iceberg.silver.dim_article`
 → используется в:
-- `mart.sales_monthly_category`
-- `mart.repeat_purchase_category`
 
-### Customers flow
+- `iceberg.mart.sales_monthly_category`
+- `iceberg.mart.repeat_purchase_category`
+
+### Поток клиентов
 
 `customers.csv`
-→ `raw.hm_customers_csv`
-→ `bronze.hm_customers`
-→ `silver.dim_customer`
+→ `s3a://lakehouse/raw/hm/customers/load_date=YYYY-MM-DD/customers.csv`
+→ `hive.raw.hm_customers_raw`
+→ `iceberg.bronze.hm_customers`
+→ `iceberg.silver.dim_customer`
 → используется в:
-- `mart.customer_segment_monthly`
-- `mart.customer_rfm_monthly`
 
-### Transactions flow
+- `iceberg.mart.customer_segment_monthly`
+
+### Поток транзакций
 
 `transactions_train.csv`
-→ `raw.hm_transactions_csv`
-→ `bronze.hm_transactions`
-→ `silver.fact_sales_line`
+→ `s3a://lakehouse/raw/hm/transactions_train/load_date=YYYY-MM-DD/transactions_train.csv`
+→ `hive.raw.hm_transactions_raw`
+→ `iceberg.bronze.hm_transactions`
+→ `iceberg.silver.fact_sales_line`
 → используется в:
-- `mart.sales_daily_channel`
-- `mart.sales_monthly_category`
-- `mart.customer_segment_monthly`
-- `mart.customer_rfm_monthly`
 
-### Derived aggregate flow
+- `iceberg.mart.sales_daily_channel`
+- `iceberg.mart.sales_monthly_category`
+- `iceberg.mart.customer_segment_monthly`
+- `iceberg.mart.customer_rfm_monthly`
 
-`silver.fact_sales_line`
-→ `silver.fact_customer_article_stats`
-→ `mart.repeat_purchase_category`
+### Поток производного агрегата
 
-Примечание по mart-слою:
-- `mart.*` материализуются как Iceberg-таблицы;
-- текущее обновление marts выполняется через полный rebuild из silver-слоя.
+`iceberg.silver.fact_sales_line`
+→ `iceberg.silver.fact_customer_article_stats`
+→ `iceberg.mart.repeat_purchase_category`
 
-Примечание по обновлению:
-- новый `batch_id` обновляет `silver.fact_customer_article_stats` через batch-level delta merge;
-- повторная загрузка уже существующего `batch_id` пересобирает только затронутые пары `customer_id + article_id`.
+## Примечания по обновлению
 
-## Join logic
+- Временные таблицы `hive.raw.*` создаются на этапе загрузки bronze и читают директории raw-файлов как внешний CSV-источник.
+- Для нового `batch_id` агрегат `iceberg.silver.fact_customer_article_stats` обновляется через `MERGE`.
+- Для повторной загрузки уже существующего `batch_id` пересобираются только затронутые префиксы `customer_id`.
+- Витрины слоя `marts` в текущей версии пересобираются полностью из `silver`.
 
-Основные связи модели:
-- `silver.fact_sales_line.customer_id` → `silver.dim_customer.customer_id`
-- `silver.fact_sales_line.article_id` → `silver.dim_article.article_id`
-- `silver.fact_sales_line.sale_date` → `silver.dim_date.date_day`
+## Основные связи
+
+- `iceberg.silver.fact_sales_line.customer_id` → `iceberg.silver.dim_customer.customer_id`
+- `iceberg.silver.fact_sales_line.article_id` → `iceberg.silver.dim_article.article_id`
+- `iceberg.silver.fact_sales_line.sale_date` → `iceberg.silver.dim_date.date_day`

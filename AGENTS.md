@@ -1,9 +1,9 @@
-# AGENTS.md — repository-wide instructions
+# AGENTS.md — инструкции на уровне репозитория
 
-## Project
-Учебный групповой проект: Data Lakehouse + SQL BI Agent.
+## Проект
+Учебный групповой проект: Data Lakehouse + SQL BI-агент.
 
-Target stack:
+Целевой стек:
 - MinIO
 - Hive Metastore
 - Apache Iceberg
@@ -11,61 +11,61 @@ Target stack:
 - WrenAI
 - Python 3.11+
 
-## Scope
-These instructions apply to the whole repository unless a deeper `AGENTS.md` overrides them.
+## Область действия
+Эти инструкции действуют во всём репозитории, если более глубокий `AGENTS.md` их не переопределяет.
 
-## Source of truth
-Before making changes, read files in this order:
-1. `README.md` — project overview and current scope
-2. `ARCHITECTURE.md` — target architecture and layer model
-3. `docs/data/schema.md` — table catalog, grains, and layer structure
-4. `docs/data/catalog_generated.md` — schema from Trino metadata
-5. `docs/data/marts.md` — analytical marts and BI-facing logic
-6. the closest local `AGENTS.md` in the directory you work in
+## Источник истины
+Перед изменениями прочитай файлы в таком порядке:
+1. `README.md` — обзор проекта и текущая область
+2. `ARCHITECTURE.md` — целевая архитектура и модель слоёв
+3. `docs/data/schema.md` — каталог таблиц, grain и структура слоёв
+4. `docs/data/catalog_generated.md` — производный каталог столбцов, сгенерированный из DDL
+5. `docs/data/marts.md` — аналитические marts и логика для BI
+6. ближайший локальный `AGENTS.md` в каталоге, где работаешь
 
-If documents conflict, prefer the most specific file for that scope.
+Если документы противоречат друг другу, приоритет у самого специфичного файла для этой области.
 
-## Commands
-- Start stack: `docker compose up -d`
-- Stop stack: `docker compose down`
-- Run raw ingestion: `python ingestion/load_raw.py`
-- Run bronze load: `python ingestion/load_bronze.py`
-- Run silver load: `python ingestion/load_silver.py`
-- Run tests: `pytest tests/ -v`
-- Lint: `ruff check . && ruff format .`
+## Команды
+- Запустить стек: `docker compose up -d`
+- Остановить стек: `docker compose down`
+- Запустить загрузку raw: `python ingestion/load_raw.py`
+- Запустить загрузку bronze: `python ingestion/load_bronze.py`
+- Запустить загрузку silver: `python ingestion/load_silver.py`
+- Запустить тесты: `pytest tests/ -v`
+- Проверить и отформатировать код: `ruff check . && ruff format .`
 
-## Working rules
-- Keep diffs minimal and scoped to the task.
-- Do not perform broad refactors unless explicitly requested.
-- Run relevant checks after changes when possible.
-- If architecture, configs, env vars, data model, or commands change, update docs in the same task.
-- Treat this repository as a project under active design: not every planned component is fully implemented yet.
+## Правила работы
+- Держи изменения минимальными и в рамках задачи.
+- Не делай широких рефакторингов без явного запроса.
+- По возможности запускай релевантные проверки после изменений.
+- Если меняются архитектура, конфиги, переменные окружения, модель данных или команды, обновляй документацию в той же задаче.
+- Считай этот репозиторий проектом в активной проработке: не все запланированные компоненты ещё реализованы.
 
-## Data model conventions
-- The target layer model is: `raw -> bronze -> silver -> marts -> BI agent`
-- Use the H&M dataset as the primary reference dataset.
-- `silver.fact_customer_period_stats` is out of scope and should not be introduced.
-- `silver.fact_customer_article_stats` is allowed as a derived silver aggregate.
-- Primary BI / semantic exposure should be built on marts, not on bronze tables.
+## Соглашения по модели данных
+- Целевая модель слоёв: `raw -> bronze -> silver -> marts -> BI-агент`
+- В качестве основного набора данных используй датасет H&M.
+- `silver.fact_customer_period_stats` находится вне области и не должен появляться.
+- `silver.fact_customer_article_stats` допустим как производная агрегатная таблица silver.
+- Основная публикация для BI-агента и семантического слоя должна строиться на marts, а не на bronze-таблицах.
 
-## Always
-- Read any files in the repository.
-- Add new files in `ingestion/`, `sql/`, `bi-agent/`, `tests/`, `docs/`, and `scripts/`.
-- Update `.env.example` when adding new environment variables.
-- Update relevant docs when changing data model, file names, commands, or architecture.
+## Всегда
+- Читай любые файлы в репозитории.
+- Добавляй новые файлы в `ingestion/`, `sql/`, `bi-agent/`, `tests/`, `docs/` и `scripts/`.
+- Обновляй `.env.example`, когда добавляешь новые переменные окружения.
+- Обновляй релевантную документацию, когда меняются модель данных, имена файлов, команды или архитектура.
 
-## Ask first
-- Change infrastructure files unless the task explicitly concerns infrastructure.
-- Change existing table grains, business keys, or semantic definitions.
-- Add new external dependencies or new Docker services.
-- Change prompts or semantic layer unless the task is about BI-agent quality or behavior.
+## Сначала спроси
+- Менять файлы инфраструктуры, если задача явно не касается инфраструктуры.
+- Менять существующие grain таблиц, бизнес-ключи или определения семантического слоя.
+- Добавлять новые внешние зависимости или новые Docker-сервисы.
+- Менять промпты или семантический слой, если задача не про качество или поведение BI-агента.
 
-## Never
-- Edit `.env`.
-- Commit real secrets or credentials.
-- Commit large local datasets from `data/raw/`.
-- Remove tests or reduce coverage without explicit reason.
+## Никогда
+- Редактировать `.env`.
+- Коммитить реальные секреты или учётные данные.
+- Коммитить большие локальные датасеты из `data/raw/`.
+- Удалять тесты или снижать покрытие без явной причины.
 
-## Notes
-- `docs/data/schema.md` may be edited manually until automated schema generation is implemented.
-- Once `scripts/gen_schema.py` becomes the source of truth, this rule can be tightened.
+## Примечания
+- `docs/data/schema.md` остаётся человекочитаемым описанием модели и может редактироваться вручную.
+- `docs/data/catalog_generated.md` должен обновляться скриптом `scripts/gen_schema.py`.

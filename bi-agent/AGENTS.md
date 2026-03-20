@@ -1,50 +1,50 @@
 # AGENTS.md — bi-agent
 
-## Purpose
-This directory contains the BI-agent layer:
-- semantic layer definitions
-- prompts
-- evaluation assets
-- helper scripts related to NL2SQL quality
+## Назначение
+Этот каталог содержит слой BI-агента:
+- определения семантического слоя
+- промпты
+- оценочные артефакты
+- вспомогательные скрипты, связанные с качеством NL2SQL
 
-## Source of truth
-Before changing BI-agent logic, read:
+## Источник истины
+Перед изменением логики BI-агента прочитай:
 1. `docs/data/catalog_generated.md`
 2. `docs/data/schema.md`
 3. `docs/data/marts.md`
 4. `ARCHITECTURE.md`
-5. this file
+5. этот файл
 
-## Exposure rules
-- Primary semantic exposure should be based on marts.
-- Silver tables may be exposed only when needed for explanation or advanced modeling.
-- Bronze tables must not be exposed to the BI-agent as primary semantic entities.
+## Правила экспозиции
+- Основная семантическая экспозиция должна строиться на marts.
+- Таблицы silver можно показывать только при необходимости для объяснения или продвинутого моделирования.
+- Таблицы bronze нельзя показывать BI-агенту как основные семантические сущности.
 
-## Preferred exposed entities
-Expose first:
+## Предпочтительные сущности для экспозиции
+Сначала показывай:
 - `mart.sales_daily_channel`
 - `mart.sales_monthly_category`
 - `mart.customer_segment_monthly`
 - `mart.repeat_purchase_category`
 - `mart.customer_rfm_monthly`
 
-Expose selectively if needed:
+Показывай выборочно, если нужно:
 - `silver.dim_article`
 - `silver.dim_customer`
 - `silver.fact_sales_line`
 
-## Prompt rules
-- Prefer prompts that guide the agent toward marts first.
-- Prefer explicit metric definitions when the dataset is ambiguous.
-- Keep prompts aligned with documented grains and metric meanings.
+## Правила для промптов
+- Отдавай предпочтение промптам, которые направляют агента сначала к marts.
+- Предпочитай явные определения метрик, когда набор данных неоднозначен.
+- Синхронизируй промпты с документированными grain и значениями метрик.
 
-## Evaluation rules
-- If semantic layer changes, update evaluation questions.
-- If a mart is renamed or removed, update eval assets in the same task.
-- Prefer evaluation questions that check both SQL correctness and table selection.
+## Правила оценки
+- Если семантический слой меняется, обновляй оценочные вопросы.
+- Если mart переименован или удалён, обновляй артефакты оценки в той же задаче.
+- Предпочитай оценочные вопросы, которые проверяют и корректность SQL, и выбор таблиц.
 
-## Update docs together
-If semantic entities, prompts, or BI-facing model names change, also update:
+## Обновляй документацию вместе с кодом
+Если меняются семантические сущности, промпты или BI-ориентированные названия моделей, также обновляй:
 - `docs/data/marts.md`
 - `docs/data/schema.md`
-- `ARCHITECTURE.md` if architectural intent changes
+- `ARCHITECTURE.md`, если меняется архитектурный замысел

@@ -1,97 +1,155 @@
 # datalakehouse-bi-agent
 
-Учебный проект по построению локального Data Lakehouse и BI-ассистента поверх аналитических витрин.
+Учебный проект по построению локального Data Lakehouse и BI-агента поверх аналитических витрин датасета H&M Fashion Recommendations.
 
-## Project goal
+## Цель проекта
 
-Цель проекта:
-- загрузить исходные данные в объектное хранилище;
-- построить слои `raw -> bronze -> silver -> marts`;
-- предоставить SQL-доступ к витринам через Trino;
-- подключить BI-агента для natural-language вопросов к данным.
+Проект покрывает полный путь от исходных CSV-файлов до витрин, доступных через SQL:
 
-## Dataset
+- загрузка исходных данных в MinIO;
+- построение слоёв `raw -> bronze -> silver -> marts`;
+- публикация витрин в Trino поверх Iceberg;
+- подключение BI-агента для вопросов на естественном языке.
 
-Проект использует H&M Fashion Recommendations dataset.
+## Датасет
 
-В scope v1 входят:
-- `articles.csv`
-- `customers.csv`
-- `transactions_train.csv`
+В проекте используется датасет H&M Fashion Recommendations.
 
-Изображения товаров в scope v1 не входят.
+В текущий контур входят три исходных файла:
 
-## Target stack
+- `articles.csv`;
+- `customers.csv`;
+- `transactions_train.csv`.
 
-- MinIO
-- Hive Metastore
-- Apache Iceberg
-- Trino
-- WrenAI (or similar SQL BI agent)
-- Python
+Изображения товаров в текущую версию не входят.
 
-## Planned data model
+## Технологический стек
+
+- MinIO;
+- Hive Metastore;
+- Apache Iceberg;
+- Trino;
+- WrenAI;
+- Python 3.11+.
+
+## Поток данных
 
 ### Raw
-Хранение исходных CSV без бизнес-трансформаций.
+
+Исходные CSV-файлы сохраняются в бакете `lakehouse` по пути:
+
+- `raw/hm/articles/load_date=YYYY-MM-DD/articles.csv`;
+- `raw/hm/customers/load_date=YYYY-MM-DD/customers.csv`;
+- `raw/hm/transactions_train/load_date=YYYY-MM-DD/transactions_train.csv`.
+
+Слой `raw` хранит файлы без бизнес-преобразований.
 
 ### Bronze
-Технически нормализованные Iceberg-таблицы:
-- `bronze.hm_articles`
-- `bronze.hm_customers`
-- `bronze.hm_transactions`
+
+Скрипт `ingestion/load_bronze.py` создаёт временные внешние таблицы в `hive.raw`, а затем загружает данные в Iceberg-таблицы:
+
+- `iceberg.bronze.hm_articles`;
+- `iceberg.bronze.hm_customers`;
+- `iceberg.bronze.hm_transactions`.
 
 ### Silver
-Очищенная аналитическая модель:
-- `silver.dim_article`
-- `silver.dim_customer`
-- `silver.dim_date`
-- `silver.fact_sales_line`
-- `silver.fact_customer_article_stats`
+
+Скрипт `ingestion/load_silver.py` формирует очищенную аналитическую модель:
+
+- `iceberg.silver.dim_article`;
+- `iceberg.silver.dim_customer`;
+- `iceberg.silver.dim_date`;
+- `iceberg.silver.fact_sales_line`;
+- `iceberg.silver.fact_customer_article_stats`.
 
 ### Marts
-Готовые витрины для BI-agent:
-- `mart.sales_daily_channel`
-- `mart.sales_monthly_category`
-- `mart.customer_segment_monthly`
-- `mart.repeat_purchase_category`
-- `mart.customer_rfm_monthly`
 
-## Repository structure
+Скрипт `ingestion/load_marts.py` пересобирает физические витрины в схеме `iceberg.mart`:
 
-- `infra/` — инфраструктурные конфиги и compose
-- `ingestion/` — скрипты загрузки и построения слоёв
-- `sql/ddl/` — DDL для физических таблиц bronze, silver и mart
-- `sql/queries/` — SQL-логика наполнения и аналитических преобразований для bronze, silver и mart
-- `bi-agent/` — semantic layer, prompts, evaluation
-- `docs/` — архитектурная и data-документация
-- `scripts/` — служебные скрипты
-- `tests/` — тесты
+- `sales_daily_channel`;
+- `sales_monthly_category`;
+- `customer_segment_monthly`;
+- `repeat_purchase_category`;
+- `customer_rfm_monthly`.
 
-## Local stack
+Логически этот слой называется `marts`, а физически витрины лежат в схеме `mart`.
 
-Локальная инфраструктура поднимается через `docker-compose.yml`:
+## Структура репозитория
 
-```bash
-docker compose up -d
-```
+- `infra/` — конфиги локального стека и сервисов;
+- `ingestion/` — Python-скрипты загрузки и построения слоёв;
+- `sql/ddl/` — DDL физических таблиц Iceberg;
+- `sql/queries/` — SQL-преобразования для слоёв bronze, silver и marts;
+- `bi-agent/` — артефакты BI-агента, семантического слоя и оценки качества;
+- `docs/` — проектная документация;
+- `scripts/` — служебные скрипты;
+- `tests/` — автотесты.
 
-Версия MinIO задаётся через `MINIO_IMAGE` в `.env.example`.
+## Быстрый запуск
+
+1. Создать виртуальное окружение и установить зависимости:
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. Подготовить переменные окружения:
+
+   ```bash
+   cp .env.local.example .env.local
+   cp .env.docker.example .env.docker
+   set -a && source .env.local && set +a
+   ```
+
+3. Поднять локальный стек:
+
+   ```bash
+   make up
+   ```
+
+4. Инициализировать бакет и префиксы слоёв:
+
+   ```bash
+   make init-storage
+   ```
+
+5. Последовательно загрузить данные:
+
+   ```bash
+   make load-raw
+   make load-bronze
+   make load-silver
+   make load-marts
+   ```
+
+6. Поднять WrenAI:
+
+   ```bash
+   make up-wrenai
+   ```
+
+Подробные шаги описаны в `docs/setup/local-setup.md`.
 
 ## Документация
 
-- `ARCHITECTURE.md` — целевая архитектура проекта
-- `docs/data/schema.md` — каталог таблиц и grain
-- `docs/data/marts.md` — описание аналитических витрин
-- `docs/data/lineage.md` — происхождение данных и зависимости между слоями
+- `ARCHITECTURE.md` — архитектура проекта и карта сервисов;
+- `docs/data/schema.md` —  описание слоёв, таблиц и grain;
+- `docs/data/catalog_generated.md` — производный каталог столбцов, генерируемый из DDL;
+- `docs/data/marts.md` — описание аналитических витрин;
+- `docs/data/lineage.md` — происхождение данных и зависимости между слоями;
+- `docs/setup/local-setup.md` — пошаговый локальный запуск;
+- `docs/setup/stack-overview.md` — обзор локального стека;
+- `docs/decisions/` — архитектурные и проектные решения.
 
-## Быстрый запуск
-Подробная инструкция по запуску: [docs/setup/local-setup.md](docs/setup/local-setup.md)
+## Текущее состояние
 
-## Текущий статус
+В репозитории уже реализованы:
 
-Репозиторий находится в стадии проектирования и поэтапного наполнения.
-Часть файлов пока является заготовками для последующей реализации.
-Реализовано:
-1. Развертка инфраструктуры
-2. Загрузка raw данных в бакет MiniIO
+- локальный стек MinIO + Hive Metastore + Trino;
+- загрузка `raw`, `bronze`, `silver` и `marts`;
+- DDL и SQL-преобразования для аналитических слоёв;
+- набор тестов для загрузки и витрин.
+
+BI-агент и его окружение уже заведены в структуре проекта, но семантический слой, промпты и оценка качества пока находятся на ранней стадии наполнения.

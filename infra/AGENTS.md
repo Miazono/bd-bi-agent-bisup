@@ -1,33 +1,32 @@
 # AGENTS.md — infra
 
-## Purpose
-Infrastructure for the local Data Lakehouse stack:
+## Назначение
+Инфраструктура локального стека Data Lakehouse:
 MinIO, Hive Metastore, metastore DB, Trino, WrenAI.
 
+## Команды
+- Запустить стек: `docker compose -f docker-compose.yml up -d`
+- Остановить стек: `docker compose -f docker-compose.yml down`
+- Логи: `docker compose -f docker-compose.yml logs <service>`
+- Пересоздать сервис: `docker compose -f docker-compose.yml up -d --force-recreate <service>`
 
-## Commands
-- Start stack: `docker compose docker-compose.yml up -d`
-- Stop stack: `docker compose docker-compose.yml down`
-- Logs: `docker compose docker-compose.yml logs <service>`
-- Recreate service: `docker compose -f docker-compose.yml up -d --force-recreate <service>`
+## Правила
+- Сохраняй стабильный локальный опыт разработки.
+- Не хардкоди секреты.
+- Сохраняй существующие имена бакетов, если задача явно не требует миграции.
+- Если меняется инфраструктурный конфиг, обновляй `README.md`, `ARCHITECTURE.md` и `.env.example`.
 
-## Rules
-- Keep local developer experience stable.
-- Do not hardcode secrets.
-- Preserve existing bucket names unless the task explicitly requires migration.
-- If infra config changes, update `README.md`, `ARCHITECTURE.md`, and `.env.example`.
+## Можно без дополнительного подтверждения
+- Настраивать существующие переменные окружения сервисов.
+- Исправлять сломанные монтирования или связность сервисов.
+- Обновлять конфиг WrenAI/Trino под уже утверждённые требования проекта.
 
-## Allowed without extra confirmation
-- Adjust existing service environment variables.
-- Fix broken mounts or service wiring.
-- Update WrenAI/Trino config for already approved project requirements.
+## Сначала спроси
+- Добавлять или удалять сервисы.
+- Менять хост-порты, пути постоянных томов, Docker-сети, имена сервисов или имена бакетов.
+- Менять major версии образов.
+- Вносить разрушительные изменения, которые могут сделать локальные данные недействительными.
 
-## Ask first
-- Add/remove services.
-- Change host ports, persistent volume paths, Docker networks, service names, or bucket names.
-- Change major image versions.
-- Make destructive changes that can invalidate local data.
-
-## Never
-- Commit real credentials.
-- Introduce breaking infra changes without documenting migration steps.
+## Никогда
+- Коммитить реальные учётные данные.
+- Вносить ломающие инфраструктурные изменения без описания шагов миграции.

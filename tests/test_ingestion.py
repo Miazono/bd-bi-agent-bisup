@@ -23,7 +23,7 @@ def test_raw_upload_creates_objects(tmp_path, minio_client, monkeypatch):
 
     object_names = [call_item.args[1] for call_item in minio_client.fput_object.call_args_list]
     expected = {
-        f"raw/hm/load_date={load_date}/{filename}"
+        f"raw/hm/{filename.split('.')[0]}/load_date={load_date}/{filename}"
         for filename in load_raw.SOURCE_FILES
     }
     assert set(object_names) == expected

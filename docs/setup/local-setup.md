@@ -3,112 +3,191 @@
 ## Требования
 
 - Python 3.11+
-- Запущенный стек (`docker compose up -d`)
-- Исходные CSV-файлы: `articles.csv`, `customers.csv`, `transactions_train.csv`
+- Docker и Docker Compose
+- CSV-файлы `articles.csv`, `customers.csv`, `transactions_train.csv`
 
-## Первоначальная настройка
+## Подготовка окружения
 
 ```bash
-# 1. Создать виртуальное окружение
 python3 -m venv .venv
 source .venv/bin/activate
-
-# 2. Установить зависимости
 pip install -r requirements.txt
 
-# 3. Настроить переменные окружения
 cp .env.local.example .env.local
 cp .env.docker.example .env.docker
-# Отредактировать оба файла под свои значения
 
-# 4. Загрузить переменные для локальных Python-скриптов
 set -a && source .env.local && set +a
 ```
 
-## Память Trino для локального full-batch прогона
+`.env.local` используется для локального запуска Python-скриптов, а `.env.docker` — для запуска контейнеров внутри docker-сети.
 
-Для одиночного локального стека с полным batch `hm_20260308_01` текущая конфигурация Trino настроена на повышенный memory profile:
-
-- `infra/trino/jvm.config`: `-Xmx8G`
-- `infra/trino/config.properties`: `query.max-memory-per-node=6GB`
-- `infra/trino/config.properties`: `query.max-memory=6GB`
-- `infra/trino/config.properties`: `query.max-total-memory=7GB`
-
-Это не отменяет chunking в `load_silver.py`, а только поднимает потолок для тяжёлых запросов.
-
-Для быстрых smoke-проверок `load_silver.py` поддерживает:
-- `--months 2020-09-01` или список через запятую, чтобы перегрузить только выбранные month-chunk для `fact_sales_line`
-- `--skip-stats`, чтобы пропустить пересчёт `silver.fact_customer_article_stats`
-Если локальная машина слабее, эти значения нужно уменьшать вместе с ожиданиями по времени загрузки Silver.
-
-## Создание бакета в MinIO
-
-Перед первым запуском пайплайна необходимо создать бакет в MinIO.
-Имя бакета берётся из переменной `LAKEHOUSE_BUCKET` в `.env` (по умолчанию `lakehouse`).
-
-**Способ 1 — через UI:**
-1. Открыть `http://<domain>:9001`
-2. Войти с логином/паролем из `.env` (`MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`)
-3. **Buckets → Create Bucket** → ввести `lakehouse` → Create
-
-**Способ 2 — из консоли (переменные уже должны быть загружены):**
-```bash
-python3 -c "
-import os
-from minio import Minio
-from urllib.parse import urlparse
-
-endpoint = os.getenv('MINIO_ENDPOINT', 'localhost:9000')
-parsed = urlparse(endpoint)
-host = parsed.netloc or parsed.path
-secure = parsed.scheme == 'https'
-
-client = Minio(host,
-    access_key=os.getenv('MINIO_ROOT_USER'),
-    secret_key=os.getenv('MINIO_ROOT_PASSWORD'),
-    secure=secure
-)
-client.make_bucket('lakehouse')
-print('Bucket lakehouse created')
-"
-```
-
-## Загрузка raw-данных в MinIO
+## Подъём локального стека
 
 ```bash
-python ingestion/load_raw.py --source-dir /data/raw
+make up
 ```
 
-Скрипт загружает три файла в бакет по пути `raw/hm/load_date=YYYY-MM-DD/`.
-При повторном запуске файлы с неизменённым MD5 пропускаются автоматически.
+Команда поднимает:
 
-> **Важно:** CSV-файлы должны называться точно `articles.csv`, `customers.csv`, `transactions_train.csv`.
+- `minio`;
+- `metastore-db`;
+- `hive-metastore`;
+- `trino`.
 
-## Построение mart-слоя
+Проверить состояние контейнеров можно стандартной командой `docker compose ps`.
 
-После загрузки Silver можно построить materialized marts:
+## Инициализация хранилища
+
+Перед первой загрузкой нужно создать бакет и служебные префиксы слоёв:
 
 ```bash
-python -m ingestion.load_marts
+make init-storage
 ```
 
-Скрипт создаёт физические Iceberg-таблицы в схеме `mart` и выполняет полный rebuild витрин из silver-слоя.
+Скрипт создаёт бакет `LAKEHOUSE_BUCKET` и префиксы:
+
+- `raw/`;
+- `bronze/`;
+- `silver/`;
+- `marts/`.
+
+## Подготовка исходных файлов
+
+По умолчанию команда `make load-raw` читает файлы из директории `data/raw`.
+В этой директории должны лежать:
+
+- `data/raw/articles.csv`;
+- `data/raw/customers.csv`;
+- `data/raw/transactions_train.csv`.
+
+Если исходные файлы лежат в другом каталоге, путь можно явно передать через `--source-dir`.
+
+## Загрузка raw
+
+### Через Makefile
+
+```bash
+make load-raw
+```
+
+### Напрямую
+
+```bash
+APP_ENV=local python -m ingestion.load_raw \
+  --load-date 2026-03-19 \
+  --source-dir data/raw
+```
+
+Скрипт загружает файлы в MinIO по путям:
+
+- `raw/hm/articles/load_date=YYYY-MM-DD/articles.csv`;
+- `raw/hm/customers/load_date=YYYY-MM-DD/customers.csv`;
+- `raw/hm/transactions_train/load_date=YYYY-MM-DD/transactions_train.csv`.
+
+Если MD5 файла не изменился, объект повторно не загружается.
+
+## Загрузка bronze
+
+### Через Makefile
+
+```bash
+make load-bronze
+```
+
+### Напрямую
+
+```bash
+APP_ENV=local python -m ingestion.load_bronze \
+  --load-date 2026-03-08 \
+  --batch-id hm_20260308_01
+```
+
+Во время загрузки скрипт:
+
+- проверяет наличие raw-файлов для указанной даты;
+- создаёт внешние таблицы `hive.raw.hm_*_raw`;
+- загружает batch в `iceberg.bronze.*`.
+
+## Загрузка silver
+
+### Через Makefile
+
+```bash
+make load-silver
+```
+
+### Напрямую
+
+```bash
+APP_ENV=local python -m ingestion.load_silver \
+  --batch-id hm_20260308_01 \
+  --stats-prefix-len 1
+```
+
+Полезные опции:
+
+- `--months 2020-09-01` — обработать только выбранные месячные части `fact_sales_line`;
+- `--skip-stats` — пропустить обновление `silver.fact_customer_article_stats`;
+- `--stats-prefix-len 2` — изменить длину префикса для безопасной повторной пересборки агрегата.
+
+## Память Trino для полного локального прогона
+
+Для локального прогона полного batch в репозитории настроен повышенный профиль памяти Trino:
+
+- `infra/trino/jvm.config`: `-Xmx8G`;
+- `infra/trino/config.properties`: `query.max-memory-per-node=6GB`;
+- `infra/trino/config.properties`: `query.max-memory=6GB`;
+- `infra/trino/config.properties`: `query.max-total-memory=7GB`.
+
+Это не отменяет разбивку `fact_sales_line` по месяцам, а только увеличивает допустимый объём памяти для тяжёлых запросов.
+
+Если локальная машина слабее, лучше:
+
+- обрабатывать только часть месяцев через `--months`;
+- временно использовать `--skip-stats`;
+- уменьшить параметры памяти Trino под доступные ресурсы.
+
+## Загрузка витрин marts
+
+### Через Makefile
+
+```bash
+make load-marts
+```
+
+### Напрямую
+
+```bash
+APP_ENV=local python -m ingestion.load_marts
+```
+
+Скрипт создаёт физические Iceberg-таблицы в схеме `iceberg.mart` и полностью пересобирает витрины из `silver`.
 
 ## Подъём WrenAI
 
-WrenAI поднимается в той же docker-сети, что и `trino`, но вынесен в отдельный compose profile `wrenai`.
+WrenAI запускается отдельным профилем `wrenai`:
 
 ```bash
 make up-wrenai
 ```
 
-После старта:
-- UI доступен на `http://localhost:3000`
-- AI service доступен на `http://localhost:5555`
-- в Wren нужно подключать только `iceberg.mart`
+После старта доступны:
 
-Для остановки WrenAI:
+- интерфейс: `http://localhost:3000`;
+- AI-сервис: `http://localhost:5555`.
+
+Для остановки:
 
 ```bash
 make down-wrenai
+```
+
+При подключении к Trino в WrenAI следует ориентироваться на витрины схемы `iceberg.mart`.
+
+## Полезные команды
+
+```bash
+pytest tests/ -v
+python3 scripts/gen_schema.py
+docker compose --env-file .env.docker logs -f trino
 ```

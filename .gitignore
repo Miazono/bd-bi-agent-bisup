@@ -1,10 +1,12 @@
 __pycache__/
+AGENTS.md
 .env
 .env.local
 .env.docker
 .env.shared
 *.pyc
 .venv
+study/
 data/raw/
 infra/wrenai/data/*
 !infra/wrenai/data/.gitkeep
