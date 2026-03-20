@@ -1,5 +1,58 @@
 # Учебный комплект по проекту
 
+## Навигация по разделам
+
+### Базовая навигация
+
+- [Словарь терминов и обозначений](00-glossary.md)
+- [Карта обучения и порядок чтения](01-learning-map.md)
+
+### Теория по платформе и подходу
+
+- [Обзор теоретического раздела](theory/README.md)
+- [Архитектура warehouse и lakehouse](theory/01-warehouse-and-lakehouse-architecture.md)
+- [Моделирование данных и слоистая организация](theory/02-data-modeling-and-layering.md)
+- [Синтаксис Trino SQL, используемый в проекте](theory/03-trino-sql-syntax-used-in-project.md)
+- [Python-библиотеки, используемые в проекте](theory/04-python-libraries-used-in-project.md)
+- [MinIO, Hive Metastore, Iceberg и Trino](theory/05-minio-hive-metastore-iceberg-trino.md)
+- [WrenAI и семантический слой](theory/06-wrenai-and-semantic-layer.md)
+
+### Разбор реализации проекта
+
+- [Архитектура системы проекта](project/01-system-architecture.md)
+- [Пайплайн данных по слоям](project/02-data-pipeline.md)
+- [Слои данных и состав таблиц](project/03-data-layers-and-tables.md)
+- [Разбор SQL DDL для таблиц](project/04-sql-ddl-breakdown.md)
+- [Разбор SQL загрузки bronze-слоя](project/05-sql-bronze-breakdown.md)
+- [Разбор SQL преобразований silver-слоя](project/06-sql-silver-breakdown.md)
+- [Разбор SQL витрин marts](project/07-sql-marts-breakdown.md)
+- [Настройки Python и общие утилиты](project/08-python-settings-and-utils.md)
+- [Скрипт загрузки raw-слоя](project/09-python-load-raw.md)
+- [Скрипт загрузки bronze-слоя](project/10-python-load-bronze.md)
+- [Скрипт загрузки silver-слоя](project/11-python-load-silver.md)
+- [Скрипт загрузки marts-слоя](project/12-python-load-marts.md)
+- [Инфраструктурная конфигурация проекта](project/13-infra-config-breakdown.md)
+
+### BI-агент и семантический слой
+
+- [Обзор раздела BI-части](bi-agent/README.md)
+- [Что такое WrenAI и где он в проекте](bi-agent/01-wrenai-overview.md)
+- [Архитектура BI-части проекта](bi-agent/02-project-bi-architecture.md)
+- [Разбор семантического слоя](bi-agent/03-semantic-layer-breakdown.md)
+- [Разбор конфигурации WrenAI](bi-agent/04-wrenai-config-breakdown.md)
+- [Текущее и целевое состояние BI-части](bi-agent/05-current-vs-target-state.md)
+- [Разбор оценки качества и evaluation](bi-agent/06-evaluation-breakdown.md)
+
+### Путеводители по скриптам
+
+- [Обзор формата script guides](script-guides/README.md)
+- [Карта скрипта загрузки raw](script-guides/maps/ingestion/load_raw.md)
+- [Карта скрипта загрузки bronze](script-guides/maps/ingestion/load_bronze.md)
+- [Карта скрипта загрузки silver](script-guides/maps/ingestion/load_silver.md)
+- [Карта скрипта загрузки marts](script-guides/maps/ingestion/load_marts.md)
+- [Карта генерации схемы и каталога](script-guides/maps/scripts/gen_schema.md)
+- [Карта инициализации хранилища](script-guides/maps/scripts/init_storage.md)
+
 ## Назначение
 
 Этот раздел содержит учебные материалы для глубокого понимания проекта `db-bi-agent-bisup`.

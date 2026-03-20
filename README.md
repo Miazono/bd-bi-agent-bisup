@@ -2,6 +2,60 @@
 
 Учебный проект по построению локального Data Lakehouse и BI-агента поверх аналитических витрин датасета H&M Fashion Recommendations.
 
+## Навигация по учебным материалам
+
+### Базовая навигация
+
+- [Словарь терминов и обозначений](docs/study/00-glossary.md)
+- [Карта обучения и порядок чтения](docs/study/01-learning-map.md)
+- [Главная страница учебного комплекта](docs/study/README.md)
+
+### Теория по платформе и подходу
+
+- [Обзор теоретического раздела](docs/study/theory/README.md)
+- [Архитектура warehouse и lakehouse](docs/study/theory/01-warehouse-and-lakehouse-architecture.md)
+- [Моделирование данных и слоистая организация](docs/study/theory/02-data-modeling-and-layering.md)
+- [Синтаксис Trino SQL, используемый в проекте](docs/study/theory/03-trino-sql-syntax-used-in-project.md)
+- [Python-библиотеки, используемые в проекте](docs/study/theory/04-python-libraries-used-in-project.md)
+- [MinIO, Hive Metastore, Iceberg и Trino](docs/study/theory/05-minio-hive-metastore-iceberg-trino.md)
+- [WrenAI и семантический слой](docs/study/theory/06-wrenai-and-semantic-layer.md)
+
+### Разбор реализации проекта
+
+- [Архитектура системы проекта](docs/study/project/01-system-architecture.md)
+- [Пайплайн данных по слоям](docs/study/project/02-data-pipeline.md)
+- [Слои данных и состав таблиц](docs/study/project/03-data-layers-and-tables.md)
+- [Разбор SQL DDL для таблиц](docs/study/project/04-sql-ddl-breakdown.md)
+- [Разбор SQL загрузки bronze-слоя](docs/study/project/05-sql-bronze-breakdown.md)
+- [Разбор SQL преобразований silver-слоя](docs/study/project/06-sql-silver-breakdown.md)
+- [Разбор SQL витрин marts](docs/study/project/07-sql-marts-breakdown.md)
+- [Настройки Python и общие утилиты](docs/study/project/08-python-settings-and-utils.md)
+- [Скрипт загрузки raw-слоя](docs/study/project/09-python-load-raw.md)
+- [Скрипт загрузки bronze-слоя](docs/study/project/10-python-load-bronze.md)
+- [Скрипт загрузки silver-слоя](docs/study/project/11-python-load-silver.md)
+- [Скрипт загрузки marts-слоя](docs/study/project/12-python-load-marts.md)
+- [Инфраструктурная конфигурация проекта](docs/study/project/13-infra-config-breakdown.md)
+
+### BI-агент и семантический слой
+
+- [Обзор раздела BI-части](docs/study/bi-agent/README.md)
+- [Что такое WrenAI и где он в проекте](docs/study/bi-agent/01-wrenai-overview.md)
+- [Архитектура BI-части проекта](docs/study/bi-agent/02-project-bi-architecture.md)
+- [Разбор семантического слоя](docs/study/bi-agent/03-semantic-layer-breakdown.md)
+- [Разбор конфигурации WrenAI](docs/study/bi-agent/04-wrenai-config-breakdown.md)
+- [Текущее и целевое состояние BI-части](docs/study/bi-agent/05-current-vs-target-state.md)
+- [Разбор оценки качества и evaluation](docs/study/bi-agent/06-evaluation-breakdown.md)
+
+### Путеводители по скриптам
+
+- [Обзор формата script guides](docs/study/script-guides/README.md)
+- [Карта скрипта загрузки raw](docs/study/script-guides/maps/ingestion/load_raw.md)
+- [Карта скрипта загрузки bronze](docs/study/script-guides/maps/ingestion/load_bronze.md)
+- [Карта скрипта загрузки silver](docs/study/script-guides/maps/ingestion/load_silver.md)
+- [Карта скрипта загрузки marts](docs/study/script-guides/maps/ingestion/load_marts.md)
+- [Карта генерации схемы и каталога](docs/study/script-guides/maps/scripts/gen_schema.md)
+- [Карта инициализации хранилища](docs/study/script-guides/maps/scripts/init_storage.md)
+
 ## Цель проекта
 
 Проект покрывает полный путь от исходных CSV-файлов до витрин, доступных через SQL:
