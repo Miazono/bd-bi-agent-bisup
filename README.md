@@ -1,4 +1,4 @@
-# datalakehouse-bi-agent
+# lakehouse-bi-agent
 
 Учебный проект по построению локального Data Lakehouse и BI-агента поверх аналитических витрин датасета H&M Fashion Recommendations.
 
